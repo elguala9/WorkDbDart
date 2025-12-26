@@ -1,0 +1,12 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+
+linter:
+  rules:
+    # Disable for factory classes that are intentionally static-only
+    avoid_classes_with_only_static_members: false
+    # Trailing commas are preferred but not required for examples
+    require_trailing_commas: false

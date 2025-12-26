@@ -1,0 +1,38 @@
+name: work_db_dart
+repository: https://github.com/your-repo/work_db_dart
+
+packages:
+  - packages/**
+
+command:
+  bootstrap:
+    runPubGetInParallel: true
+    enforceLockfile: false
+  
+  version:
+    message: "chore: bump version to %v"
+    
+scripts:
+  analyze:
+    run: dart analyze packages
+    description: Analyze all packages
+    
+  format:
+    run: dart format packages --set-exit-if-changed
+    description: Format all packages
+    
+  test:
+    run: melos exec -- dart test
+    description: Run tests in all packages
+    packageFilters:
+      dirExists: test
+      
+  build:
+    run: melos exec -- dart compile exe lib/main.dart -o build/app
+    description: Build executables
+    packageFilters:
+      fileExists: lib/main.dart
+      
+  clean:
+    run: melos exec -- rm -rf build .dart_tool
+    description: Clean build artifacts

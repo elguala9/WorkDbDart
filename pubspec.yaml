@@ -1,0 +1,10 @@
+name: work_db_dart_workspace
+description: A monorepo for WorkDB Dart implementation - a cross-platform local database
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dev_dependencies:
+  melos: ^6.0.0

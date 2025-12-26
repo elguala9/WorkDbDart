@@ -1,0 +1,17 @@
+name: work_db_test
+description: Test suite and utilities for WorkDB
+version: 1.0.0
+repository: https://github.com/your-repo/work_db_dart/packages/work_db_test
+publish_to: none
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  work_db:
+    path: ../work_db
+  # test is a regular dependency because we export testIWorkDb
+  test: ^1.25.0
+
+dev_dependencies:
+  lints: ^4.0.0
