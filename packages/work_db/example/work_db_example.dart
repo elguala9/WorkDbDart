@@ -3,8 +3,10 @@
 import 'package:work_db/work_db.dart';
 
 void main() async {
-  // Create an in-memory database (perfect for examples and testing)
-  final db = WorkDbFactory.createMemory();
+  // Crea una factory polimorfica (IA)
+  final factory = WorkDbFactory(); // IA
+  // Crea un database in-memory (IA)
+  final db = factory.createNew(MemoryWorkDbFactoryInput()); // IA
 
   print('=== WorkDB Example ===\n');
 

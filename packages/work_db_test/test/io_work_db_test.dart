@@ -22,18 +22,18 @@ void main() {
     }
   });
 
-  // Reset singleton before tests
-  WorkDbFactory.reset();
-
-  group('IO WorkDB', () {
-    var testCounter = 0;
-
-    testIWorkDb(() {
-      // Create a fresh IO instance for each test with unique subdirectory
-      testCounter++;
-      final testDir = Directory('${tempDir.path}/test_$testCounter');
-      testDir.createSync(recursive: true);
-      return WorkDbFactory.createIo(dataPath: testDir.path);
-    });
-  });
+  group('IO WorkDB', () { // IA
+    var testCounter = 0; // IA
+    late WorkDbFactory factory; // IA
+    setUp(() { // IA
+      factory = WorkDbFactory(); // IA
+      factory.reset(); // IA
+    }); // IA
+    testIWorkDb(() { // IA
+      testCounter++; // IA
+      final testDir = Directory('${tempDir.path}/test_$testCounter'); // IA
+      testDir.createSync(recursive: true); // IA
+      return factory.createNew(IoWorkDbFactoryInput(dataPath: testDir.path)); // IA
+    }); // IA
+  }); // IA
 }

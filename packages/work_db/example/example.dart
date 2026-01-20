@@ -14,8 +14,10 @@ library;
 import 'package:work_db/work_db.dart';
 
 Future<void> main() async {
-  // Create a database instance (using memory for this example)
-  final db = WorkDbFactory.createMemory();
+  // Crea una factory polimorfica (IA)
+  final factory = WorkDbFactory(); // IA
+  // Crea un database in-memory (IA)
+  final db = factory.createNew(MemoryWorkDbFactoryInput()); // IA
 
   print('=== WorkDB Example ===\n');
 

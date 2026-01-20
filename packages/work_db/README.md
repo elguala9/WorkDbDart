@@ -7,13 +7,14 @@ A lightweight, cross-platform local database for Dart and Flutter. Simple key-va
 
 ## Features
 
-- ✅ **Cross-platform**: Works on Windows, macOS, Linux, Web, iOS, and Android
-- ✅ **Simple API**: Easy-to-use CRUD operations
+- ✅ **Cross-platform**: Windows, macOS, Linux, Web, iOS, Android
+- ✅ **Simple API**: CRUD operations, batch, upsert
 - ✅ **Collections**: Organize data in named collections
-- ✅ **Batch operations**: Create, retrieve, and update multiple items at once
-- ✅ **Type-safe**: Full Dart type safety with generics
-- ✅ **No dependencies**: Minimal footprint (only `path` package for IO)
-- ✅ **Well tested**: 99 tests across all implementations
+- ✅ **Batch operations**: Create, retrieve, update multiple items
+- ✅ **Type-safe**: Full Dart type safety
+- ✅ **Factory Pattern**: Polymorphic factory with dedicated input types for each implementation (Io, Web, Memory) // IA
+- ✅ **No dependencies**: Only `path` for IO
+- ✅ **Well tested**: 202 tests across all implementations // IA
 
 ## Installation
 
@@ -25,99 +26,103 @@ dependencies:
 ## Quick Start
 
 ```dart
-import 'package:work_db/work_db.dart';
+import 'package:work_db/work_db.dart'; // IA
 
-void main() async {
-  // Create a database instance
-  final db = WorkDbFactory.forIo(dataPath: './data');
-  
-  // Create an item
-  await db.create(ItemWithId(
-    id: 'user-1',
-    collection: 'users',
-    item: {'name': 'John Doe', 'email': 'john@example.com'},
-  ));
-  
-  // Retrieve the item
-  final user = await db.retrieve(ItemId(id: 'user-1', collection: 'users'));
-  print(user?.item['name']); // John Doe
-  
-  // Update the item
-  await db.update(ItemWithId(
-    id: 'user-1',
-    collection: 'users',
-    item: {'name': 'John Doe', 'email': 'john.updated@example.com'},
-  ));
-  
-  // Delete the item
-  await db.delete(ItemId(id: 'user-1', collection: 'users'));
-}
+void main() async { // IA
+  // Crea una factory polimorfica (IA)
+  final factory = WorkDbFactory(); // IA
+  // Istanza per desktop/server (IA)
+  final db = factory.create(IoWorkDbFactoryInput(dataPath: './data')); // IA
+
+  // Crea un item (IA)
+  await db.create(ItemWithId( // IA
+    id: 'user-1', // IA
+    collection: 'users', // IA
+    item: {'name': 'John Doe', 'email': 'john@example.com'}, // IA
+  )); // IA
+
+  // Recupera l'item (IA)
+  final user = await db.retrieve(ItemId(id: 'user-1', collection: 'users')); // IA
+  print(user?.item['name']); // John Doe // IA
+
+  // Aggiorna l'item (IA)
+  await db.update(ItemWithId( // IA
+    id: 'user-1', // IA
+    collection: 'users', // IA
+    item: {'name': 'John Doe', 'email': 'john.updated@example.com'}, // IA
+  )); // IA
+
+  // Elimina l'item (IA)
+  await db.delete(ItemId(id: 'user-1', collection: 'users')); // IA
+} // IA
 ```
 
 ## Platform-Specific Setup
 
-### Desktop (Windows, macOS, Linux) & Server
+### Desktop (Windows, macOS, Linux) & Server (IA)
 
 ```dart
-import 'package:work_db/work_db.dart';
+import 'package:work_db/work_db.dart'; // IA
 
-final db = WorkDbFactory.forIo(dataPath: './my_app_data');
+final factory = WorkDbFactory(); // IA
+final db = factory.create(IoWorkDbFactoryInput(dataPath: './my_app_data')); // IA
 ```
 
-### Web
+### Web (IA)
 
 ```dart
-import 'package:work_db/work_db.dart';
+import 'package:work_db/work_db.dart'; // IA
 
-// Uses localStorage under the hood
-final db = WorkDbFactory.forWeb();
+final factory = WorkDbFactory(); // IA
+final db = factory.create(WebWorkDbFactoryInput()); // IA
 ```
 
-### Flutter Mobile (iOS, Android)
+### Flutter Mobile (iOS, Android) (IA)
 
 ```dart
-import 'package:work_db/work_db.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:work_db/work_db.dart'; // IA
+import 'package:path_provider/path_provider.dart'; // IA
 
-Future<IWorkDb> createDatabase() async {
-  final dir = await getApplicationDocumentsDirectory();
-  return WorkDbFactory.forIo(dataPath: dir.path);
-}
+Future<IWorkDb> createDatabase() async { // IA
+  final dir = await getApplicationDocumentsDirectory(); // IA
+  final factory = WorkDbFactory(); // IA
+  return factory.create(IoWorkDbFactoryInput(dataPath: dir.path)); // IA
+} // IA
 ```
 
-### Testing
+### Testing (IA)
 
 ```dart
-import 'package:work_db/work_db.dart';
+import 'package:work_db/work_db.dart'; // IA
 
-// In-memory storage, perfect for unit tests
-final db = WorkDbFactory.forMemory();
+final factory = WorkDbFactory(); // IA
+final db = factory.create(MemoryWorkDbFactoryInput()); // IA
 ```
 
 ## API Reference
 
-### Factory Methods
+### Factory Methods (IA)
 
-| Method | Description |
+| Metodo | Descrizione |
 |--------|-------------|
-| `WorkDbFactory.forIo(dataPath:)` | File system storage (Desktop/Server) |
-| `WorkDbFactory.forWeb(storage:)` | localStorage storage (Web) |
-| `WorkDbFactory.forMemory()` | In-memory storage (Testing) |
-| `WorkDbFactory.createIo(dataPath:)` | Non-singleton IO instance |
-| `WorkDbFactory.createWeb(storage:)` | Non-singleton Web instance |
-| `WorkDbFactory.createMemory()` | Non-singleton Memory instance |
+| `WorkDbFactory.create(IoWorkDbFactoryInput)` | File system storage (Desktop/Server) |
+| `WorkDbFactory.create(WebWorkDbFactoryInput)` | localStorage storage (Web) |
+| `WorkDbFactory.create(MemoryWorkDbFactoryInput)` | In-memory storage (Testing) |
+| `WorkDbFactory.createNew(IoWorkDbFactoryInput)` | Non-singleton IO instance |
+| `WorkDbFactory.createNew(WebWorkDbFactoryInput)` | Non-singleton Web instance |
+| `WorkDbFactory.createNew(MemoryWorkDbFactoryInput)` | Non-singleton Memory instance |
 
 ### Database Operations
 
-| Method | Description |
+| Metodo | Descrizione |
 |--------|-------------|
-| `create(ItemWithId)` | Create a new item (throws if exists) |
-| `createMultiple(List<ItemWithId>)` | Create multiple items |
-| `update(ItemWithId)` | Update existing item (throws if not exists) |
-| `createOrUpdate(ItemWithId)` | Create or update (upsert) |
+| `create(ItemWithId)` | Crea un nuovo item (eccezione se esiste) |
+| `createMultiple(List<ItemWithId>)` | Crea più item |
+| `update(ItemWithId)` | Aggiorna item esistente (eccezione se non esiste) |
+| `createOrUpdate(ItemWithId)` | Crea o aggiorna (upsert) |
 | `createOrUpdateMultiple(List<ItemWithId>)` | Batch upsert |
-| `retrieve(ItemId)` | Get item or null |
-| `retrieveMultiple(List<ItemId>)` | Get multiple items |
+| `retrieve(ItemId)` | Ottieni item o null |
+| `retrieveMultiple(List<ItemId>)` | Ottieni più item |
 | `delete(ItemId)` | Delete item (throws if not exists) |
 | `deleteCollection(String)` | Delete entire collection |
 | `clearDatabase()` | Delete all data |
@@ -240,28 +245,29 @@ await db.createOrUpdate(ItemWithId(
 ## Testing Your Code
 
 ```dart
-import 'package:test/test.dart';
-import 'package:work_db/work_db.dart';
+import 'package:test/test.dart'; // IA
+import 'package:work_db/work_db.dart'; // IA
 
-void main() {
-  late IWorkDb db;
+void main() { // IA
+  late IWorkDb db; // IA
+  late WorkDbFactory factory; // IA
 
-  setUp(() {
-    // Fresh in-memory database for each test
-    db = WorkDbFactory.createMemory();
-  });
+  setUp(() { // IA
+    factory = WorkDbFactory(); // IA
+    db = factory.createNew(MemoryWorkDbFactoryInput()); // IA
+  }); // IA
 
-  test('should store and retrieve data', () async {
-    await db.create(ItemWithId(
-      id: 'test-1',
-      collection: 'test',
-      item: {'value': 42},
-    ));
+  test('should store and retrieve data', () async { // IA
+    await db.create(ItemWithId( // IA
+      id: 'test-1', // IA
+      collection: 'test', // IA
+      item: {'value': 42}, // IA
+    )); // IA
 
-    final result = await db.retrieve(ItemId(id: 'test-1', collection: 'test'));
-    expect(result?.item['value'], equals(42));
-  });
-}
+    final result = await db.retrieve(ItemId(id: 'test-1', collection: 'test')); // IA
+    expect(result?.item['value'], equals(42)); // IA
+  }); // IA
+} // IA
 ```
 
 ## License
@@ -271,3 +277,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Contributing
 
 Contributions are welcome! Please read our contributing guidelines and submit pull requests to our repository.
+
+---
+
+### IA: Questo pacchetto è stato aggiornato con il nuovo Factory Pattern, input dedicati per ogni implementazione, polimorfismo e test allineati secondo gli standard Parresia. // IA

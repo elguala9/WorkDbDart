@@ -26,37 +26,39 @@ void main() {
     }
   });
 
-  // ==================== Memory Tests ====================
-  group('Memory WorkDB', () {
-    setUp(() {
-      WorkDbFactory.reset();
-    });
+  // ==================== Memory Tests ==================== // IA
+  group('Memory WorkDB', () { // IA
+    late WorkDbFactory factory; // IA
+    setUp(() { // IA
+      factory = WorkDbFactory(); // IA
+      factory.reset(); // IA
+    }); // IA
+    testIWorkDb(() => factory.createNew(MemoryWorkDbFactoryInput())); // IA
+  }); // IA
 
-    testIWorkDb(() => WorkDbFactory.createMemory());
-  });
+  // ==================== Web Tests ==================== // IA
+  group('Web WorkDB', () { // IA
+    late WorkDbFactory factory; // IA
+    setUp(() { // IA
+      factory = WorkDbFactory(); // IA
+      factory.reset(); // IA
+    }); // IA
+    testIWorkDb(() => factory.createNew(WebWorkDbFactoryInput(webStorage: MapWebStorage()))); // IA
+  }); // IA
 
-  // ==================== Web Tests ====================
-  group('Web WorkDB', () {
-    setUp(() {
-      WorkDbFactory.reset();
-    });
-
-    testIWorkDb(() => WorkDbFactory.createWeb(storage: MapWebStorage()));
-  });
-
-  // ==================== IO Tests ====================
-  group('IO WorkDB', () {
-    var ioTestCounter = 0;
-
-    setUp(() {
-      WorkDbFactory.reset();
-    });
-
-    testIWorkDb(() {
-      ioTestCounter++;
-      final testDir = Directory('${tempDir.path}/io_test_$ioTestCounter');
-      testDir.createSync(recursive: true);
-      return WorkDbFactory.createIo(dataPath: testDir.path);
-    });
-  });
+  // ==================== IO Tests ==================== // IA
+  group('IO WorkDB', () { // IA
+    var ioTestCounter = 0; // IA
+    late WorkDbFactory factory; // IA
+    setUp(() { // IA
+      factory = WorkDbFactory(); // IA
+      factory.reset(); // IA
+    }); // IA
+    testIWorkDb(() { // IA
+      ioTestCounter++; // IA
+      final testDir = Directory('${tempDir.path}/io_test_$ioTestCounter'); // IA
+      testDir.createSync(recursive: true); // IA
+      return factory.createNew(IoWorkDbFactoryInput(dataPath: testDir.path)); // IA
+    }); // IA
+  }); // IA
 }
