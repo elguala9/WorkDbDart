@@ -179,3 +179,36 @@ class InvalidPathException implements Exception {
   String toString() =>
       'InvalidPathException: Path "$path" is invalid: $reason';
 }
+
+/// Exception thrown when a lock cannot be acquired because it's already held.
+///
+/// This exception is thrown by [LockManager.tryAcquireThrow] when attempting
+/// to acquire a lock that is already held by another client.
+///
+/// Example:
+/// ```dart
+/// try {
+///   await lockManager.tryAcquireThrow('users/user-1');
+/// } on LockAcquisitionException catch (e) {
+///   print('Could not acquire lock: ${e.documentPath}');
+/// }
+/// ```
+class LockAcquisitionException implements Exception {
+  /// Creates a new [LockAcquisitionException].
+  ///
+  /// [documentPath] is the path of the document whose lock could not be acquired.
+  /// [message] provides additional details about the failure.
+  const LockAcquisitionException(
+    this.message, {
+    this.documentPath,
+  });
+
+  /// Additional details about the lock acquisition failure.
+  final String message;
+
+  /// The path of the document whose lock could not be acquired.
+  final String? documentPath;
+
+  @override
+  String toString() => 'LockAcquisitionException: $message';
+}

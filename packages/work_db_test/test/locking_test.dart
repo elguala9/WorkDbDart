@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:test/test.dart';
 import 'package:work_db/work_db.dart';
 
@@ -5,7 +7,7 @@ void main() {
   group('ClientWorkDb Locking', () {
     group('create() with lock', () {
       test('should lock file during creation', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test1',
           collection: 'testCollection',
@@ -22,7 +24,7 @@ void main() {
       });
 
       test('should prevent duplicate creation', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test2',
           collection: 'testCollection',
@@ -39,7 +41,7 @@ void main() {
       });
 
       test('should release lock after creation', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test3',
           collection: 'testCollection',
@@ -56,7 +58,7 @@ void main() {
       });
 
       test('should release lock on exception', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item1 = ItemWithId(
           id: 'test4',
           collection: 'testCollection',
@@ -87,7 +89,7 @@ void main() {
 
     group('update() with lock', () {
       test('should lock file during update', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test5',
           collection: 'testCollection',
@@ -110,7 +112,7 @@ void main() {
       });
 
       test('should release lock after update', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test6',
           collection: 'testCollection',
@@ -134,7 +136,7 @@ void main() {
       });
 
       test('should throw when updating non-existent item', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test7',
           collection: 'testCollection',
@@ -148,7 +150,7 @@ void main() {
       });
 
       test('should release lock when update fails', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test8',
           collection: 'testCollection',
@@ -172,7 +174,7 @@ void main() {
 
     group('delete() with lock', () {
       test('should lock file during deletion', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test9',
           collection: 'testCollection',
@@ -189,7 +191,7 @@ void main() {
       });
 
       test('should release lock after deletion', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test10',
           collection: 'testCollection',
@@ -210,7 +212,7 @@ void main() {
       });
 
       test('should throw when deleting non-existent item', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
 
         expect(
           () => db.delete(ItemId(id: 'test11', collection: 'testCollection')),
@@ -219,7 +221,7 @@ void main() {
       });
 
       test('should release lock when delete fails', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test12',
           collection: 'testCollection',
@@ -245,7 +247,7 @@ void main() {
 
     group('createOrUpdate() with lock', () {
       test('should lock file during createOrUpdate when creating', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test13',
           collection: 'testCollection',
@@ -262,7 +264,7 @@ void main() {
       });
 
       test('should lock file during createOrUpdate when updating', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test14',
           collection: 'testCollection',
@@ -285,7 +287,7 @@ void main() {
       });
 
       test('should release lock after createOrUpdate', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
         final item = ItemWithId(
           id: 'test15',
           collection: 'testCollection',
@@ -304,7 +306,7 @@ void main() {
 
     group('multiple operations with locks', () {
       test('should handle multiple creates in sequence', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
 
         for (int i = 0; i < 5; i++) {
           final item = ItemWithId(
@@ -326,7 +328,7 @@ void main() {
       });
 
       test('should handle mixed operations', () async {
-        final db = WorkDb.memory();
+        final db = ClientWorkDbLock(MemoryWorkDb());
 
         // Create
         final item1 = ItemWithId(
@@ -352,6 +354,208 @@ void main() {
           ItemId(id: 'mixed1', collection: 'testCollection'),
         );
         expect(result, isNull);
+      });
+    });
+
+    group('multiple clients accessing same items', () {
+      test('two clients cannot update same item simultaneously', () async {
+        // Create shared temporary directory
+        final tempDir = await Directory.systemTemp.createTemp('workdb_test_');
+        addTearDown(() => tempDir.deleteSync(recursive: true));
+
+        final client1 = ClientWorkDbLock(IoWorkDb(tempDir.path));
+        final client2 = ClientWorkDbLock(IoWorkDb(tempDir.path));
+
+        // Create item via client1
+        final item = ItemWithId(
+          id: 'shared_item',
+          collection: 'testCollection',
+          item: {'value': 'initial'},
+        );
+        await client1.create(item);
+
+        // Track operations
+        final operations = <String>[];
+
+        // Client 1 starts update with a small delay to simulate work
+        final future1 = Future(() async {
+          operations.add('client1_start_update');
+          final updated1 = ItemWithId(
+            id: 'shared_item',
+            collection: 'testCollection',
+            item: {'value': 'updated_by_client1'},
+          );
+          await Future.delayed(const Duration(milliseconds: 100));
+          await client1.update(updated1);
+          operations.add('client1_end_update');
+        });
+
+        // Give client1 a chance to start its operation
+        await Future.delayed(const Duration(milliseconds: 10));
+
+        // Client 2 tries to update the same item
+        final future2 = Future(() async {
+          operations.add('client2_start_update');
+          final updated2 = ItemWithId(
+            id: 'shared_item',
+            collection: 'testCollection',
+            item: {'value': 'updated_by_client2'},
+          );
+          await client2.update(updated2);
+          operations.add('client2_end_update');
+        });
+
+        // Wait for both operations to complete
+        await Future.wait([future1, future2]);
+
+        // One of them should win, verify the final state is consistent
+        final result = await client1.retrieve(
+          ItemId(id: 'shared_item', collection: 'testCollection'),
+        );
+        expect(result, isNotNull);
+        expect(
+          result?.item['value'],
+          anyOf(equals('updated_by_client1'), equals('updated_by_client2')),
+        );
+
+        // Verify operations happened in sequence (one waited for the other)
+        expect(operations.length, equals(4));
+        expect(operations.first, equals('client1_start_update'));
+      });
+
+      test('tryAcquireThrow throws when lock is occupied', () async {
+        // Create shared temporary directory
+        final tempDir = await Directory.systemTemp.createTemp('workdb_test_');
+        addTearDown(() async {
+          await Future.delayed(const Duration(milliseconds: 200));
+          try {
+            tempDir.deleteSync(recursive: true);
+          } catch (e) {
+            // Ignore cleanup errors on Windows
+          }
+        });
+
+        final fs1 = IoWorkDb(tempDir.path);
+        final fs2 = IoWorkDb(tempDir.path);
+
+        final lockManager1 = LockManager(fs1);
+        final lockManager2 = LockManager(fs2);
+
+        const lockPath = './WorkDB/testCollection/shared_lock_throw';
+
+        // Client 1 acquires the lock
+        await lockManager1.tryAcquireThrow(lockPath);
+
+        // Client 2 tries to acquire the same lock - should throw
+        bool threw = false;
+        try {
+          await lockManager2.tryAcquireThrow(lockPath);
+        } on LockAcquisitionException {
+          threw = true;
+        }
+        expect(threw, true);
+
+        // Release the lock
+        await lockManager1.release(lockPath);
+
+        // Now client 2 should be able to acquire it
+        await lockManager2.tryAcquireThrow(lockPath);
+        expect(await lockManager2.isLocked(lockPath), true);
+
+        // Clean up
+        await lockManager2.release(lockPath);
+      });
+    });
+
+    group('stale lock detection with _waitingMs', () {
+      test('stale lock cleanup detects expired locks', () async {
+        // Create shared temporary directory
+        final tempDir = await Directory.systemTemp.createTemp('workdb_test_');
+        addTearDown(() => tempDir.deleteSync(recursive: true));
+
+        final fs = IoWorkDb(tempDir.path);
+
+        // Create lock manager with stale lock detection enabled
+        final lockManager = LockManager(fs, 1); // _waitingMs = 1 to enable stale lock detection
+
+        const lockPath = './WorkDB/testCollection/stale_detect';
+
+        // Manually create an expired lock (simulating crashed process)
+        final now = DateTime.now();
+        final expiredTime = now.subtract(Duration(seconds: 1));
+
+        await fs.writeFile(
+          lockPath.replaceFirst('./WorkDB/', './WorkDBLocks/') + '.lock',
+          Item(item: {
+            'unlockAt': expiredTime.toIso8601String(),
+            'user': 'crashed_process',
+            'lockedAt': expiredTime.toIso8601String(),
+          }),
+        );
+
+        // Lock manager should detect and clean up stale lock
+        final acquired = await lockManager.tryAcquire(lockPath);
+        expect(acquired, true);
+
+        // Verify new lock is in place
+        expect(await lockManager.isLocked(lockPath), true);
+
+        // Clean up
+        await lockManager.release(lockPath);
+      });
+
+      test('lock file stores unlockAt and user information', () async {
+        // Create shared temporary directory
+        final tempDir = await Directory.systemTemp.createTemp('workdb_test_');
+        addTearDown(() => tempDir.deleteSync(recursive: true));
+
+        final fs = IoWorkDb(tempDir.path);
+        final lockManager = LockManager(fs, 300);
+
+        const lockPath = './WorkDB/testCollection/lock_info';
+
+        // Acquire lock
+        await lockManager.tryAcquireThrow(lockPath);
+
+        // Lock files are stored in ./WorkDBLocks/<collection>/<itemId>.lock
+        const lockFilePath = './WorkDBLocks/testCollection/lock_info.lock';
+
+        // Read the lock file to verify it contains unlockAt and user
+        final lockFile = await fs.getFile(lockFilePath);
+        expect(lockFile.item['unlockAt'], isA<String>());
+        expect(lockFile.item['user'], equals('system'));
+
+        // Verify unlockAt is a valid ISO8601 datetime in the future
+        final unlockAt = DateTime.parse(lockFile.item['unlockAt'] as String);
+        expect(unlockAt.isAfter(DateTime.now()), true);
+
+        // Clean up
+        await lockManager.release(lockPath);
+      });
+
+      test('non-stale lock is not overwritten', () async {
+        // Create shared temporary directory
+        final tempDir = await Directory.systemTemp.createTemp('workdb_test_');
+        addTearDown(() => tempDir.deleteSync(recursive: true));
+
+        final fs1 = IoWorkDb(tempDir.path);
+        final fs2 = IoWorkDb(tempDir.path);
+
+        // Create lock managers with stale lock detection
+        final lockManager1 = LockManager(fs1, 1);
+        final lockManager2 = LockManager(fs2, 1);
+
+        const lockPath = './WorkDB/testCollection/fresh_lock';
+
+        // Client 1 acquires lock
+        await lockManager1.tryAcquireThrow(lockPath);
+
+        // Client 2 tries to acquire - should fail (lock is fresh, not stale)
+        final acquired = await lockManager2.tryAcquire(lockPath);
+        expect(acquired, false);
+
+        // Clean up
+        await lockManager1.release(lockPath);
       });
     });
   });

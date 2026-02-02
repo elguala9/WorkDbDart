@@ -32,3 +32,5 @@ Thumbs.db
 # Local database test files
 db_test_*/
 WorkDB/
+
+nul

@@ -1,15 +1,13 @@
 import 'package:work_db/src/implementations/naming_convention.dart';
 import 'package:work_db/work_db.dart';
 
-import '../exceptions.dart';
-import '../interfaces/i_work_db.dart';
-import '../interfaces/i_work_file_system.dart';
-import '../types.dart';
+part 'client_work_db_lock.dart';
+
 
 /// The main client implementation of [IWorkDb].
 ///
-/// This class implements the WorkDB interface using a pluggable
-/// [IWorkFileSystem] backend.
+/// This base class implements the WorkDB interface using a pluggable
+/// [IWorkFileSystem] backend without file locking.
 ///
 /// ## Usage
 ///
@@ -35,6 +33,15 @@ import '../types.dart';
 /// final db2 = ClientWorkDb(IoWorkDb('./data2'));
 /// // db1 and db2 are completely independent
 /// ```
+///
+/// ## Locking
+///
+/// For thread-safe operations with file locking, use [ClientWorkDbLock]:
+///
+/// ```dart
+/// final db = ClientWorkDbLock(IoWorkDb('./data'));
+/// // Operations are protected by file locks
+/// ```
 class ClientWorkDb implements IWorkDb {
   /// Creates a new [ClientWorkDb] with the given file system backend.
   ///
@@ -44,13 +51,11 @@ class ClientWorkDb implements IWorkDb {
   /// ```dart
   /// final db = ClientWorkDb(IoWorkDb('./data'));
   /// ```
-  ClientWorkDb(this._workDbInternal){
+  ClientWorkDb(this._workDbInternal) {
     NamingConvention.validateOrThrow(_workDbInternal.getPath());
-    _lockManager = LockManager(_workDbInternal);
   }
 
   final IWorkFileSystem _workDbInternal;
-  late LockManager _lockManager;
 
   /// The root directory for all database files.
   String get _root => './WorkDB';
@@ -67,22 +72,14 @@ class ClientWorkDb implements IWorkDb {
     final path = _getItemPath(input.toItemId());
     NamingConvention.validateOrThrow(path);
 
-    if (!await _lockManager.tryAcquire(path)) {
-      throw Exception('Unable to acquire lock for $path');
+    if (await _workDbInternal.exist(path)) {
+      throw ItemAlreadyExistsException(
+        id: input.id,
+        collection: input.collection,
+      );
     }
 
-    try {
-      if (await _workDbInternal.exist(path)) {
-        throw ItemAlreadyExistsException(
-          id: input.id,
-          collection: input.collection,
-        );
-      }
-
-      await _workDbInternal.writeFile(path, Item(item: input.item));
-    } finally {
-      await _lockManager.release(path);
-    }
+    await _workDbInternal.writeFile(path, Item(item: input.item));
   }
 
   @override
@@ -97,41 +94,20 @@ class ClientWorkDb implements IWorkDb {
     final path = _getItemPath(input.toItemId());
     NamingConvention.validateOrThrow(path);
 
-    if (!await _lockManager.tryAcquire(path)) {
-      throw Exception('Unable to acquire lock for $path');
+    if (!await _workDbInternal.exist(path)) {
+      throw ItemNotFoundException(
+        id: input.id,
+        collection: input.collection,
+      );
     }
 
-    try {
-      if (!await _workDbInternal.exist(path)) {
-        throw ItemNotFoundException(
-          id: input.id,
-          collection: input.collection,
-        );
-      }
-
-      await _workDbInternal.writeFile(path, Item(item: input.item));
-    } finally {
-      await _lockManager.release(path);
-    }
+    await _workDbInternal.writeFile(path, Item(item: input.item));
   }
 
   @override
   Future<void> createOrUpdate(ItemWithId input) async {
     final path = _getItemPath(input.toItemId());
-
-    if (!await _lockManager.tryAcquire(path)) {
-      throw Exception('Unable to acquire lock for $path');
-    }
-
-    try {
-      if (await _workDbInternal.exist(path)) {
-        await _workDbInternal.writeFile(path, Item(item: input.item));
-      } else {
-        await _workDbInternal.writeFile(path, Item(item: input.item));
-      }
-    } finally {
-      await _lockManager.release(path);
-    }
+    await _workDbInternal.writeFile(path, Item(item: input.item));
   }
 
   @override
@@ -168,22 +144,14 @@ class ClientWorkDb implements IWorkDb {
     final path = _getItemPath(input);
     NamingConvention.validateOrThrow(path);
 
-    if (!await _lockManager.tryAcquire(path)) {
-      throw Exception('Unable to acquire lock for $path');
+    if (!await _workDbInternal.exist(path)) {
+      throw ItemNotFoundException(
+        id: input.id,
+        collection: input.collection,
+      );
     }
 
-    try {
-      if (!await _workDbInternal.exist(path)) {
-        throw ItemNotFoundException(
-          id: input.id,
-          collection: input.collection,
-        );
-      }
-
-      await _workDbInternal.deleteFile(path);
-    } finally {
-      await _lockManager.release(path);
-    }
+    await _workDbInternal.deleteFile(path);
   }
 
   @override
