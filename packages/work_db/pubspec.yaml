@@ -2,7 +2,7 @@ name: work_db
 description: >-
   A lightweight, cross-platform local database for Dart and Flutter.
   Simple key-value storage with collections, supporting Desktop, Web, and Mobile.
-version: 1.0.2
+version: 1.1.0
 repository: https://github.com/pparresia/work_db_dart
 issue_tracker: https://github.com/pparresia/work_db_dart/issues
 documentation: https://github.com/pparresia/work_db_dart#readme

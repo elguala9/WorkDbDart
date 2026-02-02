@@ -3,7 +3,7 @@
 [![pub package](https://img.shields.io/pub/v/work_db.svg)](https://pub.dev/packages/work_db)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
-A lightweight, cross-platform local database for Dart and Flutter. Simple key-value storage organized in collections, with support for Desktop, Web, and Mobile platforms.
+A lightweight, cross-platform local database for Dart and Flutter with optional thread-safe locking. Simple key-value storage organized in collections, supporting Desktop, Web, Mobile platforms, and concurrent access scenarios.
 
 ## Features
 
@@ -12,15 +12,21 @@ A lightweight, cross-platform local database for Dart and Flutter. Simple key-va
 - **Collections**: Organize data in named collections
 - **Batch operations**: Create, retrieve, update multiple items
 - **Type-safe**: Full Dart type safety
+- **Thread-Safe Locking** *(New in 1.1.0)*: File-based locking with stale lock detection
+  - `ClientWorkDbLock` for concurrent access protection
+  - Automatic lock expiration (5000ms timeout)
+  - Stale lock cleanup with configurable timeout
+  - Lock information tracking (timestamp, user)
+- **Flexible Architecture**: Choose `ClientWorkDb` (lightweight) or `ClientWorkDbLock` (thread-safe)
 - **Factory Pattern**: Polymorphic factory with dedicated input types for each implementation
 - **Minimal dependencies**: Only `path` for IO operations
-- **Well tested**: 202 tests across all implementations
+- **Well tested**: 224 tests across all implementations + 22 comprehensive locking tests
 
 ## Installation
 
 ```yaml
 dependencies:
-  work_db: ^1.0.0
+  work_db: ^1.1.0
 ```
 
 ## Quick Start
@@ -57,6 +63,56 @@ void main() async {
   await db.delete(ItemId(id: 'user-1', collection: 'users'));
 }
 ```
+
+## Thread-Safe Operations with Locking *(New in 1.1.0)*
+
+For concurrent access across multiple clients or isolates, use `ClientWorkDbLock` for automatic lock management:
+
+```dart
+import 'package:work_db/work_db.dart';
+
+void main() async {
+  // Create a locked database instance for thread-safe operations
+  final db = ClientWorkDbLock(IoWorkDb('./data'));
+
+  // All operations are protected by file locks
+  await db.create(ItemWithId(
+    id: 'user-1',
+    collection: 'users',
+    item: {'name': 'John Doe'},
+  ));
+
+  // Locks are automatically acquired and released
+  await db.update(ItemWithId(
+    id: 'user-1',
+    collection: 'users',
+    item: {'name': 'John Smith'},
+  ));
+}
+```
+
+### Locking Features
+
+- **Automatic Lock Management**: Locks are acquired at operation start and released after completion
+- **Stale Lock Cleanup**: Expired locks are automatically detected and cleaned up
+- **Lock Expiration**: Locks expire after 5000ms if not explicitly released
+- **Configurable Timeout**: Use `ClientWorkDbLock.withWaitingMs()` for stale lock detection with custom timeout
+
+```dart
+// Enable stale lock detection with 300ms timeout
+final db = ClientWorkDbLock.withWaitingMs(
+  IoWorkDb('./data'),
+  waitingMs: 300,
+);
+```
+
+### Choosing Between Implementations
+
+| Use Case | Implementation | Benefits |
+|----------|---|---|
+| Single-threaded app | `ClientWorkDb` | Minimal overhead, simpler code |
+| Concurrent access | `ClientWorkDbLock` | Thread-safe, automatic lock management |
+| Testing | In-memory backend with `ClientWorkDb` or `ClientWorkDbLock` | No file I/O, isolated state |
 
 ## Platform-Specific Setup
 
