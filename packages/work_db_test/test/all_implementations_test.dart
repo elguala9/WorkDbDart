@@ -15,6 +15,7 @@ import 'package:work_db_test/work_db_test.dart';
 /// - IO (file system storage)
 void main() {
   late Directory tempDir;
+  final factory = WorkDbFactory();
 
   setUpAll(() async {
     tempDir = await Directory.systemTemp.createTemp('work_db_all_tests_');
@@ -26,39 +27,27 @@ void main() {
     }
   });
 
-  // ==================== Memory Tests ==================== // IA
-  group('Memory WorkDB', () { // IA
-    late WorkDbFactory factory; // IA
-    setUp(() { // IA
-      factory = WorkDbFactory(); // IA
-      factory.reset(); // IA
-    }); // IA
-    testIWorkDb(() => factory.createNew(MemoryWorkDbFactoryInput())); // IA
-  }); // IA
+  // ==================== Memory Tests ====================
+  group('Memory WorkDB', () {
+    testIWorkDb(() => factory.create(MemoryWorkDbFactoryInput()));
+  });
 
-  // ==================== Web Tests ==================== // IA
-  group('Web WorkDB', () { // IA
-    late WorkDbFactory factory; // IA
-    setUp(() { // IA
-      factory = WorkDbFactory(); // IA
-      factory.reset(); // IA
-    }); // IA
-    testIWorkDb(() => factory.createNew(WebWorkDbFactoryInput(webStorage: MapWebStorage()))); // IA
-  }); // IA
+  // ==================== Web Tests ====================
+  group('Web WorkDB', () {
+    testIWorkDb(
+      () => factory.create(WebWorkDbFactoryInput(webStorage: MapWebStorage())),
+    );
+  });
 
-  // ==================== IO Tests ==================== // IA
-  group('IO WorkDB', () { // IA
-    var ioTestCounter = 0; // IA
-    late WorkDbFactory factory; // IA
-    setUp(() { // IA
-      factory = WorkDbFactory(); // IA
-      factory.reset(); // IA
-    }); // IA
-    testIWorkDb(() { // IA
-      ioTestCounter++; // IA
-      final testDir = Directory('${tempDir.path}/io_test_$ioTestCounter'); // IA
-      testDir.createSync(recursive: true); // IA
-      return factory.createNew(IoWorkDbFactoryInput(dataPath: testDir.path)); // IA
-    }); // IA
-  }); // IA
+  // ==================== IO Tests ====================
+  group('IO WorkDB', () {
+    var ioTestCounter = 0;
+
+    testIWorkDb(() {
+      ioTestCounter++;
+      final testDir = Directory('${tempDir.path}/io_test_$ioTestCounter');
+      testDir.createSync(recursive: true);
+      return factory.create(IoWorkDbFactoryInput(dataPath: testDir.path));
+    });
+  });
 }

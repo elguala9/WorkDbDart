@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import '../i_work_file_system.dart';
-import '../types.dart';
+import '../../interfaces/i_work_file_system.dart';
+import '../../types.dart';
 
 /// In-memory file system implementation.
 ///
@@ -118,6 +118,9 @@ class MemoryWorkDb implements IWorkFileSystem {
     _storage[newPath] = stored;
     _storage.remove(oldPath);
   }
+
+  @override
+  String getPath() => ':memory:';
 
   /// Clears all data from memory.
   ///

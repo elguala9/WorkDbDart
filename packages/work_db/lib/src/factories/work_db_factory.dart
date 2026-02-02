@@ -1,7 +1,7 @@
-import '../client_work_db.dart'; // IA
-import '../implementations/io_work_db.dart'; // IA
-import '../implementations/memory_work_db.dart'; // IA
-import '../implementations/web_work_db.dart'; // IA
+import '../implementations/client_work_db.dart';
+import '../implementations/platforms/io_work_db.dart';
+import '../implementations/platforms/memory_work_db.dart';
+import '../implementations/platforms/web_work_db.dart';
 
 /// Supported platform types for WorkDB.
 enum PlatformType {
@@ -38,87 +38,124 @@ class WorkDbConfig {
   final IWebStorage? webStorage;
 }
 
-/// Factory for creating WorkDB instances (IA)
+/// Base class for factory input types.
 ///
-/// Utilizza input dedicati per ogni implementazione secondo lo standard. (IA)
-// Input base class (IA)
-abstract class WorkDbFactoryInput { // IA
-  const WorkDbFactoryInput(); // IA
+/// Each implementation has its own input class that extends this.
+abstract class WorkDbFactoryInput {
+  const WorkDbFactoryInput();
 }
 
-// Input per IoWorkDb (IA)
-class IoWorkDbFactoryInput extends WorkDbFactoryInput { // IA
-  final String dataPath; // IA
-  const IoWorkDbFactoryInput({required this.dataPath}); // IA
+/// Input configuration for creating an [IoWorkDb] instance.
+///
+/// Example:
+/// ```dart
+/// final db = factory.create(IoWorkDbFactoryInput(dataPath: './data'));
+/// ```
+class IoWorkDbFactoryInput extends WorkDbFactoryInput {
+  /// Creates input for IO-based storage.
+  ///
+  /// [dataPath] is the base directory for storing database files.
+  const IoWorkDbFactoryInput({required this.dataPath});
+
+  /// The base path for file storage.
+  final String dataPath;
 }
 
-// Input per WebWorkDb (IA)
-class WebWorkDbFactoryInput extends WorkDbFactoryInput { // IA
-  final IWebStorage? webStorage; // IA
-  const WebWorkDbFactoryInput({this.webStorage}); // IA
+/// Input configuration for creating a [WebWorkDb] instance.
+///
+/// Example:
+/// ```dart
+/// final db = factory.create(WebWorkDbFactoryInput());
+/// ```
+class WebWorkDbFactoryInput extends WorkDbFactoryInput {
+  /// Creates input for web-based storage.
+  ///
+  /// [webStorage] is an optional custom storage implementation.
+  /// If not provided, defaults to [MapWebStorage].
+  const WebWorkDbFactoryInput({this.webStorage});
+
+  /// Optional custom web storage implementation.
+  final IWebStorage? webStorage;
 }
 
-// Input per MemoryWorkDb (IA)
-class MemoryWorkDbFactoryInput extends WorkDbFactoryInput { // IA
-  const MemoryWorkDbFactoryInput(); // IA
+/// Input configuration for creating a [MemoryWorkDb] instance.
+///
+/// Example:
+/// ```dart
+/// final db = factory.create(MemoryWorkDbFactoryInput());
+/// ```
+class MemoryWorkDbFactoryInput extends WorkDbFactoryInput {
+  /// Creates input for in-memory storage.
+  const MemoryWorkDbFactoryInput();
 }
 
-// Factory astratta polimorfica (IA)
-abstract class IWorkDbFactory { // IA
-  ClientWorkDb create(WorkDbFactoryInput input); // IA
+/// Interface for WorkDB factory implementations.
+abstract class IWorkDbFactory {
+  /// Creates a database instance based on the provided input type.
+  ClientWorkDb create(WorkDbFactoryInput input);
 }
 
-// Implementazione polimorfica (IA)
-class WorkDbFactory implements IWorkDbFactory { // IA
-  @override // IA
-  ClientWorkDb create(WorkDbFactoryInput input) { // IA
-    if (input is IoWorkDbFactoryInput) { // IA
-      final ioImpl = IoWorkDb(input.dataPath); // IA
-      return ClientWorkDb.getInstance(ioImpl); // IA
-    } // IA
-    if (input is WebWorkDbFactoryInput) { // IA
-      final webImpl = WebWorkDb(input.webStorage); // IA
-      return ClientWorkDb.getInstance(webImpl); // IA
-    } // IA
-    if (input is MemoryWorkDbFactoryInput) { // IA
-      final memoryImpl = MemoryWorkDb(); // IA
-      return ClientWorkDb.getInstance(memoryImpl); // IA
-    } // IA
-    throw ArgumentError('Tipo input non supportato'); // IA
-  } // IA
-
-  // Factory per istanza non singleton (IA)
-  ClientWorkDb createNew(WorkDbFactoryInput input) { // IA
-    if (input is IoWorkDbFactoryInput) { // IA
-      final ioImpl = IoWorkDb(input.dataPath); // IA
-      return ClientWorkDb.createInstance(ioImpl); // IA
-    } // IA
-    if (input is WebWorkDbFactoryInput) { // IA
-      final webImpl = WebWorkDb(input.webStorage); // IA
-      return ClientWorkDb.createInstance(webImpl); // IA
-    } // IA
-    if (input is MemoryWorkDbFactoryInput) { // IA
-      final memoryImpl = MemoryWorkDb(); // IA
-      return ClientWorkDb.createInstance(memoryImpl); // IA
-    } // IA
-    throw ArgumentError('Tipo input non supportato'); // IA
-  } // IA
-
-  // Reset singleton (IA)
-  void reset() { // IA
-    ClientWorkDb.resetInstance(); // IA
-  } // IA
+/// Factory for creating WorkDB instances.
+///
+/// Supports polymorphic creation using dedicated input types for each
+/// implementation (IO, Web, Memory).
+///
+/// Each call to [create] returns a new independent instance.
+///
+/// Example:
+/// ```dart
+/// final factory = WorkDbFactory();
+///
+/// // For desktop/server
+/// final ioDb = factory.create(IoWorkDbFactoryInput(dataPath: './data'));
+///
+/// // For web
+/// final webDb = factory.create(WebWorkDbFactoryInput());
+///
+/// // For testing
+/// final memDb = factory.create(MemoryWorkDbFactoryInput());
+///
+/// // Multiple independent instances
+/// final db1 = factory.create(IoWorkDbFactoryInput(dataPath: './data1'));
+/// final db2 = factory.create(IoWorkDbFactoryInput(dataPath: './data2'));
+/// // db1 and db2 are completely independent
+/// ```
+class WorkDbFactory implements IWorkDbFactory {
+  @override
+  ClientWorkDb create(WorkDbFactoryInput input) {
+    if (input is IoWorkDbFactoryInput) {
+      return ClientWorkDb(IoWorkDb(input.dataPath));
+    }
+    if (input is WebWorkDbFactoryInput) {
+      return ClientWorkDb(WebWorkDb(input.webStorage));
+    }
+    if (input is MemoryWorkDbFactoryInput) {
+      return ClientWorkDb(MemoryWorkDb());
+    }
+    throw ArgumentError('Unsupported input type: ${input.runtimeType}');
+  }
 }
 
-/// Factory polimorfica tramite config (IA)
-ClientWorkDb createWorkDb(WorkDbConfig config) { // IA
-  final factory = WorkDbFactory(); // IA
-  switch (config.platform) { // IA
-    case PlatformType.io: // IA
-      return factory.create(IoWorkDbFactoryInput(dataPath: config.dataPath)); // IA
-    case PlatformType.web: // IA
-      return factory.create(WebWorkDbFactoryInput(webStorage: config.webStorage)); // IA
-    case PlatformType.memory: // IA
-      return factory.create(MemoryWorkDbFactoryInput()); // IA
-  } // IA
-} // IA
+/// Creates a WorkDB instance using configuration.
+///
+/// This is a convenience function for creating database instances
+/// using the [WorkDbConfig] class.
+///
+/// Example:
+/// ```dart
+/// final db = createWorkDb(WorkDbConfig(
+///   platform: PlatformType.io,
+///   dataPath: './data',
+/// ));
+/// ```
+ClientWorkDb createWorkDb(WorkDbConfig config) {
+  final factory = WorkDbFactory();
+  switch (config.platform) {
+    case PlatformType.io:
+      return factory.create(IoWorkDbFactoryInput(dataPath: config.dataPath));
+    case PlatformType.web:
+      return factory.create(WebWorkDbFactoryInput(webStorage: config.webStorage));
+    case PlatformType.memory:
+      return factory.create(MemoryWorkDbFactoryInput());
+  }
+}

@@ -11,11 +11,19 @@ library;
 /// - int/double (num)
 /// - bool
 /// - null
-/// - Map<String, dynamic> (JsonObject)
-/// - List<dynamic> (containing JsonValue elements)
-typedef JsonValue = dynamic;
+/// - Map<String, Object?> (JsonObject)
+/// - List<Object?> (containing JsonValue elements)
+///
+/// Using `Object?` instead of `dynamic` provides better type safety:
+/// - Compile-time checks prevent calling non-existent methods
+/// - Forces explicit type checking/casting before use
+/// - IDE provides better autocomplete and error detection
+typedef JsonValue = Object?;
 
 /// A JSON object represented as a Map with String keys.
+///
+/// Values can be any JSON-compatible type (String, num, bool, null,
+/// List, or nested Map).
 typedef JsonObject = Map<String, JsonValue>;
 
 /// Identifies a unique item within a collection.

@@ -419,7 +419,7 @@ void testIWorkDb(IWorkDb Function() getWorkDb) {
         item: {
           'id': msg.id,
           'data': msg.data.toList(),
-          'checksum': msg.data.fold(0, (sum, byte) => sum + byte),
+          'checksum': msg.data.fold<int>(0, (sum, byte) => sum + byte),
         },
       )).toList();
 

@@ -1,5 +1,5 @@
-// Copyright (c) 2024 Andrea Parodi. All rights reserved.
-// Use of this source code is governed by a MIT license that can be
+// Copyright (c) 2024 Parresia. All rights reserved.
+// Use of this source code is governed by a LGPL v3 license that can be
 // found in the LICENSE file.
 
 /// Example demonstrating WorkDB usage.
@@ -14,10 +14,10 @@ library;
 import 'package:work_db/work_db.dart';
 
 Future<void> main() async {
-  // Crea una factory polimorfica (IA)
-  final factory = WorkDbFactory(); // IA
-  // Crea un database in-memory (IA)
-  final db = factory.createNew(MemoryWorkDbFactoryInput()); // IA
+  // Create a factory
+  final factory = WorkDbFactory();
+  // Create an in-memory database for this example
+  final db = factory.create(MemoryWorkDbFactoryInput());
 
   print('=== WorkDB Example ===\n');
 
@@ -70,7 +70,7 @@ Future<void> main() async {
   final alice = await db.retrieve(ItemId(id: 'user-1', collection: 'users'));
   print('   Retrieved: ${alice?.item}');
 
-  // Retrieve multiple items (including one that doesn\'t exist)
+  // Retrieve multiple items (including one that doesn't exist)
   final users = await db.retrieveMultiple([
     ItemId(id: 'user-1', collection: 'users'),
     ItemId(id: 'user-2', collection: 'users'),
@@ -149,17 +149,18 @@ Future<void> main() async {
   print('6. Platform-specific usage:');
   print('''
    // Desktop/Server (file system storage)
-   final db = WorkDbFactory.forIo(dataPath: './data');
+   final factory = WorkDbFactory();
+   final db = factory.create(IoWorkDbFactoryInput(dataPath: './data'));
 
    // Web (localStorage)
-   final db = WorkDbFactory.forWeb();
+   final db = factory.create(WebWorkDbFactoryInput());
 
    // Flutter with path_provider
    final dir = await getApplicationDocumentsDirectory();
-   final db = WorkDbFactory.forIo(dataPath: dir.path);
+   final db = factory.create(IoWorkDbFactoryInput(dataPath: dir.path));
 
    // Testing (in-memory)
-   final db = WorkDbFactory.forMemory();
+   final db = factory.create(MemoryWorkDbFactoryInput());
 ''');
 
   print('=== Example Complete ===');

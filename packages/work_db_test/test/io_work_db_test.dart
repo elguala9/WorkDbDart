@@ -9,6 +9,7 @@ import 'package:work_db_test/work_db_test.dart';
 
 void main() {
   late Directory tempDir;
+  final factory = WorkDbFactory();
 
   setUpAll(() async {
     // Create a temporary directory for all tests
@@ -22,18 +23,14 @@ void main() {
     }
   });
 
-  group('IO WorkDB', () { // IA
-    var testCounter = 0; // IA
-    late WorkDbFactory factory; // IA
-    setUp(() { // IA
-      factory = WorkDbFactory(); // IA
-      factory.reset(); // IA
-    }); // IA
-    testIWorkDb(() { // IA
-      testCounter++; // IA
-      final testDir = Directory('${tempDir.path}/test_$testCounter'); // IA
-      testDir.createSync(recursive: true); // IA
-      return factory.createNew(IoWorkDbFactoryInput(dataPath: testDir.path)); // IA
-    }); // IA
-  }); // IA
+  group('IO WorkDB', () {
+    var testCounter = 0;
+
+    testIWorkDb(() {
+      testCounter++;
+      final testDir = Directory('${tempDir.path}/test_$testCounter');
+      testDir.createSync(recursive: true);
+      return factory.create(IoWorkDbFactoryInput(dataPath: testDir.path));
+    });
+  });
 }

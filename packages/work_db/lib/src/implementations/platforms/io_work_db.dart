@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
-import '../i_work_file_system.dart';
-import '../types.dart';
+import '../../interfaces/i_work_file_system.dart';
+import '../../types.dart';
 
 /// File system implementation for Desktop/Server platforms.
 ///
@@ -152,4 +152,7 @@ class IoWorkDb implements IWorkFileSystem {
 
     await file.rename(fullNewPath);
   }
+
+  @override
+  String getPath() => _pathDb;
 }

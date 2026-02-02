@@ -1,20 +1,20 @@
 # work_db
 
 [![pub package](https://img.shields.io/pub/v/work_db.svg)](https://pub.dev/packages/work_db)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
 A lightweight, cross-platform local database for Dart and Flutter. Simple key-value storage organized in collections, with support for Desktop, Web, and Mobile platforms.
 
 ## Features
 
-- ✅ **Cross-platform**: Windows, macOS, Linux, Web, iOS, Android
-- ✅ **Simple API**: CRUD operations, batch, upsert
-- ✅ **Collections**: Organize data in named collections
-- ✅ **Batch operations**: Create, retrieve, update multiple items
-- ✅ **Type-safe**: Full Dart type safety
-- ✅ **Factory Pattern**: Polymorphic factory with dedicated input types for each implementation (Io, Web, Memory) // IA
-- ✅ **No dependencies**: Only `path` for IO
-- ✅ **Well tested**: 202 tests across all implementations // IA
+- **Cross-platform**: Windows, macOS, Linux, Web, iOS, Android
+- **Simple API**: CRUD operations, batch, upsert
+- **Collections**: Organize data in named collections
+- **Batch operations**: Create, retrieve, update multiple items
+- **Type-safe**: Full Dart type safety
+- **Factory Pattern**: Polymorphic factory with dedicated input types for each implementation
+- **Minimal dependencies**: Only `path` for IO operations
+- **Well tested**: 202 tests across all implementations
 
 ## Installation
 
@@ -26,103 +26,109 @@ dependencies:
 ## Quick Start
 
 ```dart
-import 'package:work_db/work_db.dart'; // IA
+import 'package:work_db/work_db.dart';
 
-void main() async { // IA
-  // Crea una factory polimorfica (IA)
-  final factory = WorkDbFactory(); // IA
-  // Istanza per desktop/server (IA)
-  final db = factory.create(IoWorkDbFactoryInput(dataPath: './data')); // IA
+void main() async {
+  // Create a factory
+  final factory = WorkDbFactory();
 
-  // Crea un item (IA)
-  await db.create(ItemWithId( // IA
-    id: 'user-1', // IA
-    collection: 'users', // IA
-    item: {'name': 'John Doe', 'email': 'john@example.com'}, // IA
-  )); // IA
+  // Create a database instance for desktop/server
+  final db = factory.create(IoWorkDbFactoryInput(dataPath: './data'));
 
-  // Recupera l'item (IA)
-  final user = await db.retrieve(ItemId(id: 'user-1', collection: 'users')); // IA
-  print(user?.item['name']); // John Doe // IA
+  // Create an item
+  await db.create(ItemWithId(
+    id: 'user-1',
+    collection: 'users',
+    item: {'name': 'John Doe', 'email': 'john@example.com'},
+  ));
 
-  // Aggiorna l'item (IA)
-  await db.update(ItemWithId( // IA
-    id: 'user-1', // IA
-    collection: 'users', // IA
-    item: {'name': 'John Doe', 'email': 'john.updated@example.com'}, // IA
-  )); // IA
+  // Retrieve the item
+  final user = await db.retrieve(ItemId(id: 'user-1', collection: 'users'));
+  print(user?.item['name']); // John Doe
 
-  // Elimina l'item (IA)
-  await db.delete(ItemId(id: 'user-1', collection: 'users')); // IA
-} // IA
+  // Update the item
+  await db.update(ItemWithId(
+    id: 'user-1',
+    collection: 'users',
+    item: {'name': 'John Doe', 'email': 'john.updated@example.com'},
+  ));
+
+  // Delete the item
+  await db.delete(ItemId(id: 'user-1', collection: 'users'));
+}
 ```
 
 ## Platform-Specific Setup
 
-### Desktop (Windows, macOS, Linux) & Server (IA)
+### Desktop (Windows, macOS, Linux) & Server
 
 ```dart
-import 'package:work_db/work_db.dart'; // IA
+import 'package:work_db/work_db.dart';
 
-final factory = WorkDbFactory(); // IA
-final db = factory.create(IoWorkDbFactoryInput(dataPath: './my_app_data')); // IA
+final factory = WorkDbFactory();
+final db = factory.create(IoWorkDbFactoryInput(dataPath: './my_app_data'));
 ```
 
-### Web (IA)
+### Web
 
 ```dart
-import 'package:work_db/work_db.dart'; // IA
+import 'package:work_db/work_db.dart';
 
-final factory = WorkDbFactory(); // IA
-final db = factory.create(WebWorkDbFactoryInput()); // IA
+final factory = WorkDbFactory();
+final db = factory.create(WebWorkDbFactoryInput());
 ```
 
-### Flutter Mobile (iOS, Android) (IA)
+### Flutter Mobile (iOS, Android)
 
 ```dart
-import 'package:work_db/work_db.dart'; // IA
-import 'package:path_provider/path_provider.dart'; // IA
+import 'package:work_db/work_db.dart';
+import 'package:path_provider/path_provider.dart';
 
-Future<IWorkDb> createDatabase() async { // IA
-  final dir = await getApplicationDocumentsDirectory(); // IA
-  final factory = WorkDbFactory(); // IA
-  return factory.create(IoWorkDbFactoryInput(dataPath: dir.path)); // IA
-} // IA
+Future<IWorkDb> createDatabase() async {
+  final dir = await getApplicationDocumentsDirectory();
+  final factory = WorkDbFactory();
+  return factory.create(IoWorkDbFactoryInput(dataPath: dir.path));
+}
 ```
 
-### Testing (IA)
+### Testing
 
 ```dart
-import 'package:work_db/work_db.dart'; // IA
+import 'package:work_db/work_db.dart';
 
-final factory = WorkDbFactory(); // IA
-final db = factory.create(MemoryWorkDbFactoryInput()); // IA
+final factory = WorkDbFactory();
+final db = factory.create(MemoryWorkDbFactoryInput());
 ```
 
 ## API Reference
 
-### Factory Methods (IA)
+### Factory Methods
 
-| Metodo | Descrizione |
+| Method | Description |
 |--------|-------------|
-| `WorkDbFactory.create(IoWorkDbFactoryInput)` | File system storage (Desktop/Server) |
-| `WorkDbFactory.create(WebWorkDbFactoryInput)` | localStorage storage (Web) |
-| `WorkDbFactory.create(MemoryWorkDbFactoryInput)` | In-memory storage (Testing) |
-| `WorkDbFactory.createNew(IoWorkDbFactoryInput)` | Non-singleton IO instance |
-| `WorkDbFactory.createNew(WebWorkDbFactoryInput)` | Non-singleton Web instance |
-| `WorkDbFactory.createNew(MemoryWorkDbFactoryInput)` | Non-singleton Memory instance |
+| `WorkDbFactory().create(IoWorkDbFactoryInput)` | File system storage (Desktop/Server) |
+| `WorkDbFactory().create(WebWorkDbFactoryInput)` | localStorage storage (Web) |
+| `WorkDbFactory().create(MemoryWorkDbFactoryInput)` | In-memory storage (Testing) |
+
+Each call to `create()` returns a new independent instance. You can create multiple databases with different paths:
+
+```dart
+final db1 = factory.create(IoWorkDbFactoryInput(dataPath: './data1'));
+final db2 = factory.create(IoWorkDbFactoryInput(dataPath: './data2'));
+// db1 and db2 are completely independent
+```
 
 ### Database Operations
 
-| Metodo | Descrizione |
+| Method | Description |
 |--------|-------------|
-| `create(ItemWithId)` | Crea un nuovo item (eccezione se esiste) |
-| `createMultiple(List<ItemWithId>)` | Crea più item |
-| `update(ItemWithId)` | Aggiorna item esistente (eccezione se non esiste) |
-| `createOrUpdate(ItemWithId)` | Crea o aggiorna (upsert) |
+| `create(ItemWithId)` | Create a new item (throws if exists) |
+| `createMultiple(List<ItemWithId>)` | Create multiple items |
+| `update(ItemWithId)` | Update existing item (throws if not exists) |
+| `createOrUpdate(ItemWithId)` | Create or update (upsert) |
 | `createOrUpdateMultiple(List<ItemWithId>)` | Batch upsert |
-| `retrieve(ItemId)` | Ottieni item o null |
-| `retrieveMultiple(List<ItemId>)` | Ottieni più item |
+| `retrieve(ItemId)` | Get item or null |
+| `retrieveMultiple(List<ItemId>)` | Get multiple items |
 | `delete(ItemId)` | Delete item (throws if not exists) |
 | `deleteCollection(String)` | Delete entire collection |
 | `clearDatabase()` | Delete all data |
@@ -217,21 +223,23 @@ Data is stored as JSON files in a simple directory structure:
 ## Error Handling
 
 ```dart
+import 'package:work_db/work_db.dart';
+
 try {
   await db.create(ItemWithId(
     id: 'duplicate',
     collection: 'test',
     item: {'data': 'value'},
   ));
-  
-  // This will throw - item already exists
+
+  // This will throw ItemAlreadyExistsException
   await db.create(ItemWithId(
     id: 'duplicate',
     collection: 'test',
     item: {'data': 'new value'},
   ));
-} catch (e) {
-  print('Error: $e');
+} on ItemAlreadyExistsException catch (e) {
+  print('Item ${e.id} already exists in ${e.collection}');
 }
 
 // Use createOrUpdate to avoid exceptions
@@ -245,39 +253,35 @@ await db.createOrUpdate(ItemWithId(
 ## Testing Your Code
 
 ```dart
-import 'package:test/test.dart'; // IA
-import 'package:work_db/work_db.dart'; // IA
+import 'package:test/test.dart';
+import 'package:work_db/work_db.dart';
 
-void main() { // IA
-  late IWorkDb db; // IA
-  late WorkDbFactory factory; // IA
+void main() {
+  late IWorkDb db;
+  late WorkDbFactory factory;
 
-  setUp(() { // IA
-    factory = WorkDbFactory(); // IA
-    db = factory.createNew(MemoryWorkDbFactoryInput()); // IA
-  }); // IA
+  setUp(() {
+    factory = WorkDbFactory();
+    db = factory.createNew(MemoryWorkDbFactoryInput());
+  });
 
-  test('should store and retrieve data', () async { // IA
-    await db.create(ItemWithId( // IA
-      id: 'test-1', // IA
-      collection: 'test', // IA
-      item: {'value': 42}, // IA
-    )); // IA
+  test('should store and retrieve data', () async {
+    await db.create(ItemWithId(
+      id: 'test-1',
+      collection: 'test',
+      item: {'value': 42},
+    ));
 
-    final result = await db.retrieve(ItemId(id: 'test-1', collection: 'test')); // IA
-    expect(result?.item['value'], equals(42)); // IA
-  }); // IA
-} // IA
+    final result = await db.retrieve(ItemId(id: 'test-1', collection: 'test'));
+    expect(result?.item['value'], equals(42));
+  });
+}
 ```
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+LGPL v3 License - see [LICENSE](LICENSE) for details.
 
 ## Contributing
 
 Contributions are welcome! Please read our contributing guidelines and submit pull requests to our repository.
-
----
-
-### IA: Questo pacchetto è stato aggiornato con il nuovo Factory Pattern, input dedicati per ogni implementazione, polimorfismo e test allineati secondo gli standard Parresia. // IA

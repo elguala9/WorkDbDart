@@ -1,18 +1,21 @@
-import 'i_work_db.dart';
-import 'i_work_file_system.dart';
-import 'types.dart';
+import 'package:work_db/src/implementations/naming_convention.dart';
+import 'package:work_db/work_db.dart';
+
+import '../exceptions.dart';
+import '../interfaces/i_work_db.dart';
+import '../interfaces/i_work_file_system.dart';
+import '../types.dart';
 
 /// The main client implementation of [IWorkDb].
 ///
 /// This class implements the WorkDB interface using a pluggable
-/// [IWorkFileSystem] backend. It uses the Singleton pattern to ensure
-/// only one instance exists per file system backend.
+/// [IWorkFileSystem] backend.
 ///
 /// ## Usage
 ///
 /// ```dart
-/// // Get instance with a specific file system backend
-/// final db = ClientWorkDb.getInstance(ioFileSystem);
+/// // Create with a specific file system backend
+/// final db = ClientWorkDb(IoWorkDb('./data'));
 ///
 /// // Use the database
 /// await db.create(ItemWithId(
@@ -22,61 +25,32 @@ import 'types.dart';
 /// ));
 /// ```
 ///
-/// ## Note on Singleton
+/// ## Multiple Instances
 ///
-/// The singleton pattern ensures consistency when the same backend
-/// is used. However, calling [resetInstance] allows creating a new
-/// instance, which is useful for testing.
+/// You can create multiple independent database instances with different
+/// backends or paths:
+///
+/// ```dart
+/// final db1 = ClientWorkDb(IoWorkDb('./data1'));
+/// final db2 = ClientWorkDb(IoWorkDb('./data2'));
+/// // db1 and db2 are completely independent
+/// ```
 class ClientWorkDb implements IWorkDb {
-  /// Private constructor to enforce singleton pattern.
-  ClientWorkDb._(this._workDbInternal);
-
-  static ClientWorkDb? _instance;
+  /// Creates a new [ClientWorkDb] with the given file system backend.
+  ///
+  /// [workDbInternal] is the storage implementation to use.
+  ///
+  /// Example:
+  /// ```dart
+  /// final db = ClientWorkDb(IoWorkDb('./data'));
+  /// ```
+  ClientWorkDb(this._workDbInternal){
+    NamingConvention.validateOrThrow(_workDbInternal.getPath());
+    _lockManager = LockManager(_workDbInternal);
+  }
 
   final IWorkFileSystem _workDbInternal;
-
-  /// Returns the singleton instance of [ClientWorkDb].
-  ///
-  /// If not created, it will instantiate with the provided [workDbInternal].
-  /// Subsequent calls return the same instance regardless of the parameter.
-  ///
-  /// [workDbInternal] is the file system backend to use.
-  ///
-  /// Example:
-  /// ```dart
-  /// final db = ClientWorkDb.getInstance(IoWorkDb('./data'));
-  /// ```
-  // ignore: prefer_constructors_over_static_methods
-  static ClientWorkDb getInstance(IWorkFileSystem workDbInternal) {
-    _instance ??= ClientWorkDb._(workDbInternal);
-    return _instance!;
-  }
-
-  /// Resets the singleton instance.
-  ///
-  /// This is primarily useful for testing to ensure a clean state
-  /// between test runs.
-  ///
-  /// **Warning**: This should not be used in production code.
-  static void resetInstance() {
-    _instance = null;
-  }
-
-  /// Creates a new non-singleton instance.
-  ///
-  /// Use this when you need multiple independent database instances
-  /// or for testing purposes.
-  ///
-  /// [workDbInternal] is the file system backend to use.
-  ///
-  /// Example:
-  /// ```dart
-  /// final testDb = ClientWorkDb.createInstance(MockFileSystem());
-  /// ```
-  // ignore: prefer_constructors_over_static_methods
-  static ClientWorkDb createInstance(IWorkFileSystem workDbInternal) {
-    return ClientWorkDb._(workDbInternal);
-  }
+  late LockManager _lockManager;
 
   /// The root directory for all database files.
   String get _root => './WorkDB';
@@ -91,15 +65,24 @@ class ClientWorkDb implements IWorkDb {
   @override
   Future<void> create(ItemWithId input) async {
     final path = _getItemPath(input.toItemId());
+    NamingConvention.validateOrThrow(path);
 
-    if (await _workDbInternal.exist(path)) {
-      throw Exception(
-        'Item with id "${input.id}" in collection "${input.collection}" '
-        'already exists.',
-      );
+    if (!await _lockManager.tryAcquire(path)) {
+      throw Exception('Unable to acquire lock for $path');
     }
 
-    await _workDbInternal.writeFile(path, Item(item: input.item));
+    try {
+      if (await _workDbInternal.exist(path)) {
+        throw ItemAlreadyExistsException(
+          id: input.id,
+          collection: input.collection,
+        );
+      }
+
+      await _workDbInternal.writeFile(path, Item(item: input.item));
+    } finally {
+      await _lockManager.release(path);
+    }
   }
 
   @override
@@ -112,25 +95,42 @@ class ClientWorkDb implements IWorkDb {
   @override
   Future<void> update(ItemWithId input) async {
     final path = _getItemPath(input.toItemId());
+    NamingConvention.validateOrThrow(path);
 
-    if (!await _workDbInternal.exist(path)) {
-      throw Exception(
-        'Item with id "${input.id}" in collection "${input.collection}" '
-        'does not exist.',
-      );
+    if (!await _lockManager.tryAcquire(path)) {
+      throw Exception('Unable to acquire lock for $path');
     }
 
-    await _workDbInternal.writeFile(path, Item(item: input.item));
+    try {
+      if (!await _workDbInternal.exist(path)) {
+        throw ItemNotFoundException(
+          id: input.id,
+          collection: input.collection,
+        );
+      }
+
+      await _workDbInternal.writeFile(path, Item(item: input.item));
+    } finally {
+      await _lockManager.release(path);
+    }
   }
 
   @override
   Future<void> createOrUpdate(ItemWithId input) async {
     final path = _getItemPath(input.toItemId());
 
-    if (await _workDbInternal.exist(path)) {
-      await update(input);
-    } else {
-      await create(input);
+    if (!await _lockManager.tryAcquire(path)) {
+      throw Exception('Unable to acquire lock for $path');
+    }
+
+    try {
+      if (await _workDbInternal.exist(path)) {
+        await _workDbInternal.writeFile(path, Item(item: input.item));
+      } else {
+        await _workDbInternal.writeFile(path, Item(item: input.item));
+      }
+    } finally {
+      await _lockManager.release(path);
     }
   }
 
@@ -144,7 +144,7 @@ class ClientWorkDb implements IWorkDb {
   @override
   Future<ItemOutput?> retrieve(ItemId input) async {
     final path = _getItemPath(input);
-
+    NamingConvention.validateOrThrow(path);
     if (!await _workDbInternal.exist(path)) {
       return null;
     }
@@ -166,15 +166,24 @@ class ClientWorkDb implements IWorkDb {
   @override
   Future<void> delete(ItemId input) async {
     final path = _getItemPath(input);
+    NamingConvention.validateOrThrow(path);
 
-    if (!await _workDbInternal.exist(path)) {
-      throw Exception(
-        'Item with id "${input.id}" in collection "${input.collection}" '
-        'does not exist.',
-      );
+    if (!await _lockManager.tryAcquire(path)) {
+      throw Exception('Unable to acquire lock for $path');
     }
 
-    await _workDbInternal.deleteFile(path);
+    try {
+      if (!await _workDbInternal.exist(path)) {
+        throw ItemNotFoundException(
+          id: input.id,
+          collection: input.collection,
+        );
+      }
+
+      await _workDbInternal.deleteFile(path);
+    } finally {
+      await _lockManager.release(path);
+    }
   }
 
   @override

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import '../i_work_file_system.dart';
-import '../types.dart';
+import '../../interfaces/i_work_file_system.dart';
+import '../../types.dart';
 
 /// Storage interface for web platform abstraction.
 ///
@@ -169,4 +169,7 @@ class WebWorkDb implements IWorkFileSystem {
       ..setItem(newPath, data)
       ..removeItem(oldPath);
   }
+
+  @override
+  String getPath() => ':localStorage:';
 }
