@@ -4,6 +4,7 @@ library;
 export 'client_work_db.dart';
 export 'platforms/io_work_db.dart';
 export 'lock_manager.dart';
+export 'lock_manager_sync.dart';
 export 'platforms/memory_work_db.dart';
 export 'path_validator.dart';
 export 'platforms/web_work_db.dart';

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../interfaces/i_work_file_system.dart';
+import '../../interfaces/i_work_file_system_sync.dart';
 import '../../types.dart';
 
 /// In-memory file system implementation.
@@ -28,7 +29,7 @@ import '../../types.dart';
 ///   item: {'data': 'value'},
 /// ));
 /// ```
-class MemoryWorkDb implements IWorkFileSystem {
+class MemoryWorkDb implements IWorkFileSystem, IWorkFileSystemSync {
   /// Internal storage for files.
   final Map<String, _StoredItem> _storage = {};
 
@@ -131,6 +132,62 @@ class MemoryWorkDb implements IWorkFileSystem {
 
   /// Returns the number of items stored.
   int get itemCount => _storage.length;
+
+  // --- IWorkFileSystemSync ---
+
+  @override
+  bool existSync(String path) => _storage.containsKey(path);
+
+  @override
+  void writeFileSync(String path, Item input) {
+    _storage[path] = _StoredItem(
+      item: Map<String, dynamic>.from(input.item),
+      createdAt: _storage[path]?.createdAt ?? DateTime.now(),
+    );
+  }
+
+  @override
+  ItemOutput getFileSync(String path) {
+    final stored = _storage[path];
+    if (stored == null) throw Exception('File does not exist: $path');
+    return ItemOutput(
+      item: Map<String, dynamic>.from(stored.item),
+      createdAt: stored.createdAt.toIso8601String(),
+    );
+  }
+
+  @override
+  void deleteFileSync(String path) {
+    if (!_storage.containsKey(path)) throw Exception('File does not exist: $path');
+    _storage.remove(path);
+  }
+
+  @override
+  void deleteFolderSync(String folderPath) {
+    final prefix = folderPath.endsWith('/') ? folderPath : '$folderPath/';
+    _storage.removeWhere((k, _) => k == folderPath || k.startsWith(prefix));
+  }
+
+  @override
+  void renameFileSync(String oldPath, String newPath) {
+    final stored = _storage[oldPath];
+    if (stored == null) throw Exception('File does not exist: $oldPath');
+    _storage[newPath] = stored;
+    _storage.remove(oldPath);
+  }
+
+  @override
+  List<String> lsSync(String dirPath) {
+    final entries = <String>{};
+    final prefix = dirPath.endsWith('/') ? dirPath : '$dirPath/';
+    for (final key in _storage.keys) {
+      if (key.startsWith(prefix)) {
+        final first = key.substring(prefix.length).split('/').first;
+        if (first.isNotEmpty) entries.add(first);
+      }
+    }
+    return entries.toList();
+  }
 
   /// Returns a JSON string representation of all stored data.
   ///

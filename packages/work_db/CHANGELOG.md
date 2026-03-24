@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-03-24
+
+### Added
+
+- **Synchronous API**: All database operations are now available as synchronous methods via `IWorkDbSync`
+  - `createSync`, `createMultipleSync`, `updateSync`, `createOrUpdateSync`, `createOrUpdateMultipleSync`
+  - `retrieveSync`, `retrieveMultipleSync`, `deleteSync`, `deleteCollectionSync`, `clearDatabaseSync`
+  - `getItemsInCollectionSync`, `getCollectionsSync`
+- **`IWorkDbSync`**: New interface defining the complete synchronous database API
+- **`IWorkFileSystemSync`**: New interface for synchronous low-level file system operations
+- **`ILockManagerSync`**: New interface for synchronous lock management
+- **`LockManagerSync`**: Synchronous file-based lock manager (mirrors `LockManager`)
+  - `tryAcquireSync`, `tryAcquireThrowSync`, `releaseSync`, `isLockedSync`, `clearAllLocksSync`
+  - Stale lock detection with configurable timeout
+- **`ClientWorkDbLockSync`**: Extends `ClientWorkDbLock` with thread-safe synchronous operations
+  - Protects all `*Sync` methods with `LockManagerSync`
+  - Both `ClientWorkDbLockSync(backend)` and `ClientWorkDbLockSync.withWaitingMs(backend, waitingMs: n)` constructors
+- **`testIWorkDbSync`**: Reusable test suite for synchronous implementations (mirrors `testIWorkDb`)
+- Sync tests added for all implementations (Memory, Web, IO) in `all_implementations_test.dart`
+
+### Changed
+
+- `ClientWorkDb` now implements both `IWorkDb` (async) and `IWorkDbSync` (sync)
+- All built-in backends (`IoWorkDb`, `MemoryWorkDb`, `WebWorkDb`) already expose `IWorkFileSystemSync`
+
 ## [1.1.0] - 2026-02-02
 
 ### Added

@@ -20,13 +20,16 @@ A lightweight, cross-platform local database for Dart and Flutter with optional 
 - **Flexible Architecture**: Choose `ClientWorkDb` (lightweight) or `ClientWorkDbLock` (thread-safe)
 - **Factory Pattern**: Polymorphic factory with dedicated input types for each implementation
 - **Minimal dependencies**: Only `path` for IO operations
-- **Well tested**: 224 tests across all implementations + 22 comprehensive locking tests
+- **Synchronous API** *(New in 1.2.0)*: Full `*Sync` counterparts for all operations via `IWorkDbSync`
+  - `createSync`, `updateSync`, `retrieveSync`, `deleteSync`, and all other operations available synchronously
+  - `ClientWorkDbLockSync` for thread-safe synchronous operations
+- **Well tested**: 224 tests across all implementations + 22 comprehensive locking tests + full sync test coverage
 
 ## Installation
 
 ```yaml
 dependencies:
-  work_db: ^1.1.0
+  work_db: ^1.2.0
 ```
 
 ## Quick Start
@@ -112,7 +115,69 @@ final db = ClientWorkDbLock.withWaitingMs(
 |----------|---|---|
 | Single-threaded app | `ClientWorkDb` | Minimal overhead, simpler code |
 | Concurrent access | `ClientWorkDbLock` | Thread-safe, automatic lock management |
+| Sync single-threaded | `ClientWorkDb` (sync API) | No async overhead, blocking calls |
+| Sync concurrent access | `ClientWorkDbLockSync` | Thread-safe sync operations |
 | Testing | In-memory backend with `ClientWorkDb` or `ClientWorkDbLock` | No file I/O, isolated state |
+
+## Synchronous API *(New in 1.2.0)*
+
+All database operations are available as synchronous methods. `ClientWorkDb` implements `IWorkDbSync` directly — no wrapper needed:
+
+```dart
+import 'package:work_db/work_db.dart';
+
+void main() {
+  final db = ClientWorkDb(IoWorkDb('./data'));
+
+  // Synchronous create
+  db.createSync(ItemWithId(
+    id: 'user-1',
+    collection: 'users',
+    item: {'name': 'John Doe'},
+  ));
+
+  // Synchronous retrieve
+  final user = db.retrieveSync(ItemId(id: 'user-1', collection: 'users'));
+  print(user?.item['name']); // John Doe
+
+  // Synchronous update
+  db.updateSync(ItemWithId(
+    id: 'user-1',
+    collection: 'users',
+    item: {'name': 'John Smith'},
+  ));
+
+  // Synchronous delete
+  db.deleteSync(ItemId(id: 'user-1', collection: 'users'));
+}
+```
+
+### Thread-Safe Synchronous Operations
+
+For concurrent synchronous access, use `ClientWorkDbLockSync`:
+
+```dart
+import 'package:work_db/work_db.dart';
+
+void main() {
+  final db = ClientWorkDbLockSync(IoWorkDb('./data'));
+
+  // Sync operations are protected by file locks
+  db.createSync(ItemWithId(
+    id: 'doc-1',
+    collection: 'documents',
+    item: {'title': 'Hello'},
+  ));
+
+  // With stale lock detection
+  final dbWithTimeout = ClientWorkDbLockSync.withWaitingMs(
+    IoWorkDb('./data'),
+    waitingMs: 300,
+  );
+}
+```
+
+`ClientWorkDbLockSync` also inherits all async operations from `ClientWorkDbLock`, so you can mix sync and async calls on the same instance.
 
 ## Platform-Specific Setup
 
@@ -176,20 +241,22 @@ final db2 = factory.create(IoWorkDbFactoryInput(dataPath: './data2'));
 
 ### Database Operations
 
-| Method | Description |
-|--------|-------------|
-| `create(ItemWithId)` | Create a new item (throws if exists) |
-| `createMultiple(List<ItemWithId>)` | Create multiple items |
-| `update(ItemWithId)` | Update existing item (throws if not exists) |
-| `createOrUpdate(ItemWithId)` | Create or update (upsert) |
-| `createOrUpdateMultiple(List<ItemWithId>)` | Batch upsert |
-| `retrieve(ItemId)` | Get item or null |
-| `retrieveMultiple(List<ItemId>)` | Get multiple items |
-| `delete(ItemId)` | Delete item (throws if not exists) |
-| `deleteCollection(String)` | Delete entire collection |
-| `clearDatabase()` | Delete all data |
-| `getItemsInCollection(String)` | List item IDs in collection |
-| `getCollections()` | List all collection names |
+All operations are available in both async (`Future<T>`) and sync (`T`) variants.
+
+| Async Method | Sync Method | Description |
+|--------|-------------|-------------|
+| `create(ItemWithId)` | `createSync(ItemWithId)` | Create a new item (throws if exists) |
+| `createMultiple(List<ItemWithId>)` | `createMultipleSync(List<ItemWithId>)` | Create multiple items |
+| `update(ItemWithId)` | `updateSync(ItemWithId)` | Update existing item (throws if not exists) |
+| `createOrUpdate(ItemWithId)` | `createOrUpdateSync(ItemWithId)` | Create or update (upsert) |
+| `createOrUpdateMultiple(List<ItemWithId>)` | `createOrUpdateMultipleSync(List<ItemWithId>)` | Batch upsert |
+| `retrieve(ItemId)` | `retrieveSync(ItemId)` | Get item or null |
+| `retrieveMultiple(List<ItemId>)` | `retrieveMultipleSync(List<ItemId>)` | Get multiple items |
+| `delete(ItemId)` | `deleteSync(ItemId)` | Delete item (throws if not exists) |
+| `deleteCollection(String)` | `deleteCollectionSync(String)` | Delete entire collection |
+| `clearDatabase()` | `clearDatabaseSync()` | Delete all data |
+| `getItemsInCollection(String)` | `getItemsInCollectionSync(String)` | List item IDs in collection |
+| `getCollections()` | `getCollectionsSync()` | List all collection names |
 
 ## Examples
 

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 import '../../interfaces/i_work_file_system.dart';
+import '../../interfaces/i_work_file_system_sync.dart';
 import '../../types.dart';
 
 /// File system implementation for Desktop/Server platforms.
@@ -30,7 +31,7 @@ import '../../types.dart';
 ///     └── <collection>/
 ///         └── <itemId>  (JSON file)
 /// ```
-class IoWorkDb implements IWorkFileSystem {
+class IoWorkDb implements IWorkFileSystem, IWorkFileSystemSync {
   /// Creates a new [IoWorkDb] with the specified base path.
   ///
   /// [pathDb] is the base directory for all database files.
@@ -155,4 +156,75 @@ class IoWorkDb implements IWorkFileSystem {
 
   @override
   String getPath() => _pathDb;
+
+  // --- IWorkFileSystemSync ---
+
+  @override
+  bool existSync(String filePath) {
+    final fullPath = _resolvePath(filePath);
+    return File(fullPath).existsSync() || Directory(fullPath).existsSync();
+  }
+
+  @override
+  void writeFileSync(String filePath, Item input) {
+    final fullPath = _resolvePath(filePath);
+    final file = File(fullPath);
+    file.parent.createSync(recursive: true);
+    final data = const JsonEncoder.withIndent('  ').convert(input.item);
+    file.writeAsStringSync(data);
+  }
+
+  @override
+  ItemOutput getFileSync(String filePath) {
+    final fullPath = _resolvePath(filePath);
+    final file = File(fullPath);
+    if (!file.existsSync()) {
+      throw Exception('File does not exist: $filePath');
+    }
+    final data = file.readAsStringSync();
+    final item = json.decode(data) as Map<String, dynamic>;
+    final stat = file.statSync();
+    return ItemOutput(item: item, createdAt: stat.modified.toIso8601String());
+  }
+
+  @override
+  void deleteFileSync(String filePath) {
+    final fullPath = _resolvePath(filePath);
+    final file = File(fullPath);
+    if (!file.existsSync()) {
+      throw Exception('File does not exist: $filePath');
+    }
+    file.deleteSync();
+  }
+
+  @override
+  void deleteFolderSync(String folderPath) {
+    final fullPath = _resolvePath(folderPath);
+    final dir = Directory(fullPath);
+    if (dir.existsSync()) {
+      dir.deleteSync(recursive: true);
+    }
+  }
+
+  @override
+  void renameFileSync(String oldPath, String newPath) {
+    final fullOldPath = _resolvePath(oldPath);
+    final fullNewPath = _resolvePath(newPath);
+    final file = File(fullOldPath);
+    if (!file.existsSync()) {
+      throw Exception('File does not exist: $oldPath');
+    }
+    File(fullNewPath).parent.createSync(recursive: true);
+    file.renameSync(fullNewPath);
+  }
+
+  @override
+  List<String> lsSync(String dirPath) {
+    final fullPath = _resolvePath(dirPath);
+    final dir = Directory(fullPath);
+    if (!dir.existsSync()) {
+      return [];
+    }
+    return dir.listSync().map((e) => path.basename(e.path)).toList();
+  }
 }

@@ -2,6 +2,7 @@ import 'package:work_db/src/implementations/naming_convention.dart';
 import 'package:work_db/work_db.dart';
 
 part 'client_work_db_lock.dart';
+part 'client_work_db_lock_sync.dart';
 
 
 /// The main client implementation of [IWorkDb].
@@ -42,20 +43,24 @@ part 'client_work_db_lock.dart';
 /// final db = ClientWorkDbLock(IoWorkDb('./data'));
 /// // Operations are protected by file locks
 /// ```
-class ClientWorkDb implements IWorkDb {
+class ClientWorkDb implements IWorkDb, IWorkDbSync {
   /// Creates a new [ClientWorkDb] with the given file system backend.
   ///
   /// [workDbInternal] is the storage implementation to use.
+  /// Must also implement [IWorkFileSystemSync] (all built-in backends do).
   ///
   /// Example:
   /// ```dart
   /// final db = ClientWorkDb(IoWorkDb('./data'));
   /// ```
-  ClientWorkDb(this._workDbInternal) {
-    NamingConvention.validateOrThrow(_workDbInternal.getPath());
+  ClientWorkDb(IWorkFileSystem workDbInternal)
+      : _workDbInternal = workDbInternal,
+        _workDbInternalSync = workDbInternal as IWorkFileSystemSync {
+    NamingConvention.validateOrThrow(workDbInternal.getPath());
   }
 
   final IWorkFileSystem _workDbInternal;
+  final IWorkFileSystemSync _workDbInternalSync;
 
   /// The root directory for all database files.
   String get _root => './WorkDB';
@@ -192,6 +197,97 @@ class ClientWorkDb implements IWorkDb {
       }
     }
 
+    return collections.toList();
+  }
+
+  // --- IWorkDbSync ---
+
+  @override
+  void createSync(ItemWithId input) {
+    final path = _getItemPath(input.toItemId());
+    NamingConvention.validateOrThrow(path);
+    if (_workDbInternalSync.existSync(path)) {
+      throw ItemAlreadyExistsException(id: input.id, collection: input.collection);
+    }
+    _workDbInternalSync.writeFileSync(path, Item(item: input.item));
+  }
+
+  @override
+  void createMultipleSync(List<ItemWithId> inputs) {
+    for (final input in inputs) {
+      createSync(input);
+    }
+  }
+
+  @override
+  void updateSync(ItemWithId input) {
+    final path = _getItemPath(input.toItemId());
+    NamingConvention.validateOrThrow(path);
+    if (!_workDbInternalSync.existSync(path)) {
+      throw ItemNotFoundException(id: input.id, collection: input.collection);
+    }
+    _workDbInternalSync.writeFileSync(path, Item(item: input.item));
+  }
+
+  @override
+  void createOrUpdateSync(ItemWithId input) {
+    final path = _getItemPath(input.toItemId());
+    _workDbInternalSync.writeFileSync(path, Item(item: input.item));
+  }
+
+  @override
+  void createOrUpdateMultipleSync(List<ItemWithId> inputs) {
+    for (final input in inputs) {
+      createOrUpdateSync(input);
+    }
+  }
+
+  @override
+  ItemOutput? retrieveSync(ItemId input) {
+    final path = _getItemPath(input);
+    NamingConvention.validateOrThrow(path);
+    if (!_workDbInternalSync.existSync(path)) return null;
+    return _workDbInternalSync.getFileSync(path);
+  }
+
+  @override
+  List<ItemOutput?> retrieveMultipleSync(List<ItemId> ids) =>
+      ids.map(retrieveSync).toList();
+
+  @override
+  void deleteSync(ItemId input) {
+    final path = _getItemPath(input);
+    NamingConvention.validateOrThrow(path);
+    if (!_workDbInternalSync.existSync(path)) {
+      throw ItemNotFoundException(id: input.id, collection: input.collection);
+    }
+    _workDbInternalSync.deleteFileSync(path);
+  }
+
+  @override
+  void deleteCollectionSync(String collection) =>
+      _workDbInternalSync.deleteFolderSync(_getCollectionPath(collection));
+
+  @override
+  void clearDatabaseSync() => _workDbInternalSync.deleteFolderSync(_root);
+
+  @override
+  List<String> getItemsInCollectionSync(String collection) {
+    final path = _getCollectionPath(collection);
+    return _workDbInternalSync
+        .lsSync(path)
+        .map((f) => f.replaceFirst('$path/', ''))
+        .where((f) => f.isNotEmpty && !f.contains('/'))
+        .toList();
+  }
+
+  @override
+  List<String> getCollectionsSync() {
+    final collections = <String>{};
+    for (final f in _workDbInternalSync.lsSync(_root)) {
+      final parts = f.replaceFirst('$_root/', '').split('/');
+      if (parts.isNotEmpty && parts[0].isNotEmpty) collections.add(parts[0]);
+    }
     return collections.toList();
   }
 }

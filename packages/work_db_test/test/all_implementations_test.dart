@@ -32,9 +32,19 @@ void main() {
     testIWorkDb(() => factory.create(MemoryWorkDbFactoryInput()));
   });
 
+  group('Memory WorkDB (sync)', () {
+    testIWorkDbSync(() => factory.create(MemoryWorkDbFactoryInput()));
+  });
+
   // ==================== Web Tests ====================
   group('Web WorkDB', () {
     testIWorkDb(
+      () => factory.create(WebWorkDbFactoryInput(webStorage: MapWebStorage())),
+    );
+  });
+
+  group('Web WorkDB (sync)', () {
+    testIWorkDbSync(
       () => factory.create(WebWorkDbFactoryInput(webStorage: MapWebStorage())),
     );
   });
@@ -46,6 +56,17 @@ void main() {
     testIWorkDb(() {
       ioTestCounter++;
       final testDir = Directory('${tempDir.path}/io_test_$ioTestCounter');
+      testDir.createSync(recursive: true);
+      return factory.create(IoWorkDbFactoryInput(dataPath: testDir.path));
+    });
+  });
+
+  group('IO WorkDB (sync)', () {
+    var ioSyncTestCounter = 0;
+
+    testIWorkDbSync(() {
+      ioSyncTestCounter++;
+      final testDir = Directory('${tempDir.path}/io_sync_test_$ioSyncTestCounter');
       testDir.createSync(recursive: true);
       return factory.create(IoWorkDbFactoryInput(dataPath: testDir.path));
     });

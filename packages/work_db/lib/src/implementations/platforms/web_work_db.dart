@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../interfaces/i_work_file_system.dart';
+import '../../interfaces/i_work_file_system_sync.dart';
 import '../../types.dart';
 
 /// Storage interface for web platform abstraction.
@@ -77,7 +78,7 @@ class MapWebStorage implements IWebStorage {
 ///
 /// final db = ClientWorkDb.getInstance(fs);
 /// ```
-class WebWorkDb implements IWorkFileSystem {
+class WebWorkDb implements IWorkFileSystem, IWorkFileSystemSync {
   /// Creates a new [WebWorkDb] with the specified storage.
   ///
   /// [localStorage] is the storage backend to use.
@@ -172,4 +173,61 @@ class WebWorkDb implements IWorkFileSystem {
 
   @override
   String getPath() => ':localStorage:';
+
+  // --- IWorkFileSystemSync ---
+
+  @override
+  bool existSync(String path) => _localStorage.getItem(path) != null;
+
+  @override
+  void writeFileSync(String path, Item input) {
+    final data = const JsonEncoder.withIndent('  ').convert(input.item);
+    _localStorage.setItem(path, data);
+  }
+
+  @override
+  ItemOutput getFileSync(String path) {
+    final data = _localStorage.getItem(path);
+    if (data == null) throw Exception('File does not exist: $path');
+    return ItemOutput(item: json.decode(data) as Map<String, dynamic>);
+  }
+
+  @override
+  void deleteFileSync(String path) {
+    if (_localStorage.getItem(path) == null) throw Exception('File does not exist: $path');
+    _localStorage.removeItem(path);
+  }
+
+  @override
+  void deleteFolderSync(String folderPath) {
+    final prefix = folderPath.endsWith('/') ? folderPath : '$folderPath/';
+    final toRemove = _localStorage.keys
+        .where((k) => k == folderPath || k.startsWith(prefix))
+        .toList();
+    for (final k in toRemove) {
+      _localStorage.removeItem(k);
+    }
+  }
+
+  @override
+  void renameFileSync(String oldPath, String newPath) {
+    final data = _localStorage.getItem(oldPath);
+    if (data == null) throw Exception('File does not exist: $oldPath');
+    _localStorage
+      ..setItem(newPath, data)
+      ..removeItem(oldPath);
+  }
+
+  @override
+  List<String> lsSync(String dirPath) {
+    final entries = <String>{};
+    final prefix = dirPath.endsWith('/') ? dirPath : '$dirPath/';
+    for (final key in _localStorage.keys) {
+      if (key.startsWith(prefix)) {
+        final first = key.substring(prefix.length).split('/').first;
+        if (first.isNotEmpty) entries.add(first);
+      }
+    }
+    return entries.toList();
+  }
 }

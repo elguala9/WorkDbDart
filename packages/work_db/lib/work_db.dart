@@ -35,14 +35,18 @@ export 'src/types.dart';
 
 // Interfaces
 export 'src/interfaces/i_lock_manager.dart';
+export 'src/interfaces/i_lock_manager_sync.dart';
 export 'src/interfaces/i_path_validator.dart';
 export 'src/interfaces/i_work_db.dart';
+export 'src/interfaces/i_work_db_sync.dart';
 export 'src/interfaces/i_work_file_system.dart';
+export 'src/interfaces/i_work_file_system_sync.dart';
 
 // Implementations
 export 'src/implementations/client_work_db.dart';
 export 'src/implementations/platforms/io_work_db.dart';
 export 'src/implementations/lock_manager.dart';
+export 'src/implementations/lock_manager_sync.dart';
 export 'src/implementations/platforms/memory_work_db.dart';
 export 'src/implementations/path_validator.dart';
 export 'src/implementations/platforms/web_work_db.dart';
