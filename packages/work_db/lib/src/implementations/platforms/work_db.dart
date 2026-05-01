@@ -27,18 +27,28 @@ class WorkDb {
   ///
   /// Data is lost when the application terminates.
   /// Ideal for testing and temporary storage.
-  static ClientWorkDb memory() => ClientWorkDb(MemoryWorkDb());
+  ///
+  /// [maxRecordsPerCollection] is an optional limit on records per collection.
+  static ClientWorkDb memory({int? maxRecordsPerCollection}) =>
+      ClientWorkDb(MemoryWorkDb(), maxRecordsPerCollection: maxRecordsPerCollection);
 
   /// Creates a file-based database instance.
   ///
   /// Uses the current working directory as the base path.
   /// Data is persisted to the file system.
-  static ClientWorkDb io() => ClientWorkDb(IoWorkDb('./DefaultWorkDb'));
+  ///
+  /// [maxRecordsPerCollection] is an optional limit on records per collection.
+  static ClientWorkDb io({int? maxRecordsPerCollection}) =>
+      ClientWorkDb(IoWorkDb('./DefaultWorkDb'),
+          maxRecordsPerCollection: maxRecordsPerCollection);
 
   /// Creates a web storage database instance.
   ///
   /// Uses [MapWebStorage] as the backend.
   /// In a real browser environment, you should use an adapter
   /// for `window.localStorage`.
-  static ClientWorkDb web() => ClientWorkDb(WebWorkDb());
+  ///
+  /// [maxRecordsPerCollection] is an optional limit on records per collection.
+  static ClientWorkDb web({int? maxRecordsPerCollection}) =>
+      ClientWorkDb(WebWorkDb(), maxRecordsPerCollection: maxRecordsPerCollection);
 }

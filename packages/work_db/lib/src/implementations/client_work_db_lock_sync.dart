@@ -28,20 +28,24 @@ part of 'client_work_db.dart';
 /// ```
 class ClientWorkDbLockSync extends ClientWorkDbLock {
   /// Creates a new [ClientWorkDbLockSync] with default lock settings.
-  ClientWorkDbLockSync(super.workDbInternal)
-      : _lockManagerSync = LockManagerSync(
-          workDbInternal as IWorkFileSystemSync,
-        );
+  ClientWorkDbLockSync(
+    IWorkFileSystem workDbInternal, {
+    int? maxRecordsPerCollection,
+  }) : _lockManagerSync = LockManagerSync(
+         workDbInternal as IWorkFileSystemSync,
+       ),
+       super(workDbInternal, maxRecordsPerCollection: maxRecordsPerCollection);
 
   /// Creates a [ClientWorkDbLockSync] with custom stale lock detection timeout.
   ClientWorkDbLockSync.withWaitingMs(
-    super.workDbInternal, {
-    required super.waitingMs,
-  })  : _lockManagerSync = LockManagerSync(
-          workDbInternal as IWorkFileSystemSync,
-          waitingMs,
-        ),
-        super.withWaitingMs();
+    IWorkFileSystem workDbInternal, {
+    required int waitingMs,
+    int? maxRecordsPerCollection,
+  }) : _lockManagerSync = LockManagerSync(
+         workDbInternal as IWorkFileSystemSync,
+         waitingMs,
+       ),
+       super.withWaitingMs(workDbInternal, waitingMs: waitingMs, maxRecordsPerCollection: maxRecordsPerCollection);
 
   final LockManagerSync _lockManagerSync;
 
@@ -65,6 +69,8 @@ class ClientWorkDbLockSync extends ClientWorkDbLock {
     } finally {
       _lockManagerSync.releaseSync(path);
     }
+
+    _enforceCollectionLimitSync(input.collection);
   }
 
   @override
@@ -106,6 +112,8 @@ class ClientWorkDbLockSync extends ClientWorkDbLock {
     } finally {
       _lockManagerSync.releaseSync(path);
     }
+
+    _enforceCollectionLimitSync(input.collection);
   }
 
   @override

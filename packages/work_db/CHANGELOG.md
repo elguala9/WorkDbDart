@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-05-01
+
+### Added
+
+- **Record Limit per Collection**: New optional `maxRecordsPerCollection` parameter on all constructors (`ClientWorkDb`, `ClientWorkDbLock`, `ClientWorkDbLockSync`) and factory methods (`WorkDbFactory`, `WorkDbConfig`, `WorkDb.memory/io/web`)
+  - When the limit is exceeded, the oldest records are automatically evicted
+  - Eviction uses `createdAt` timestamps (null-safe: items without timestamps sort last)
+  - Triggered on `create`, `createMultiple`, `createOrUpdate`, `createOrUpdateMultiple` (async and sync)
+  - Fully compatible with locking (`ClientWorkDbLock`, `ClientWorkDbLockSync`)
+- **`testIWorkDbWithMaxRecords`**: New reusable test suite with 7 tests covering limit enforcement, oldest-first eviction, `createOrUpdate` edge cases, and sync API support
+
 ## [1.2.0] - 2026-03-24
 
 ### Added

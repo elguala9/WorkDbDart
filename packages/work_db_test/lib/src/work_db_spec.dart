@@ -897,3 +897,127 @@ void testIWorkDb(IWorkDb Function() getWorkDb) {
     });
   });
 }
+
+/// Tests for the [ClientWorkDb.maxRecordsPerCollection] feature.
+///
+/// [getWorkDb] returns a ClientWorkDb configured with a max record limit.
+void testIWorkDbWithMaxRecords(ClientWorkDb Function() getWorkDb) {
+  group('WorkDB Max Records Tests', () {
+    late ClientWorkDb workDb;
+
+    setUp(() {
+      workDb = getWorkDb();
+    });
+
+    test('should enforce max records per collection on create', () async {
+      for (var i = 1; i <= 5; i++) {
+        await workDb.create(ItemWithId(
+          id: 'item$i',
+          collection: 'testMax',
+          item: {'seq': i},
+        ));
+      }
+
+      final ids = await workDb.getItemsInCollection('testMax');
+      expect(ids.length, lessThanOrEqualTo(3));
+    });
+
+    test('should evict oldest records first on create', () async {
+      for (var i = 1; i <= 5; i++) {
+        await workDb.create(ItemWithId(
+          id: 'item$i',
+          collection: 'testOldest',
+          item: {'seq': i},
+        ));
+      }
+
+      final ids = await workDb.getItemsInCollection('testOldest');
+      expect(ids.length, equals(3));
+      expect(ids, isNot(contains('item1')));
+      expect(ids, isNot(contains('item2')));
+    });
+
+    test('should enforce max records with createOrUpdate for new items', () async {
+      for (var i = 1; i <= 4; i++) {
+        await workDb.createOrUpdate(ItemWithId(
+          id: 'item$i',
+          collection: 'testCOU',
+          item: {'seq': i},
+        ));
+      }
+
+      final ids = await workDb.getItemsInCollection('testCOU');
+      expect(ids.length, lessThanOrEqualTo(3));
+    });
+
+    test('should not evict when createOrUpdate updates existing item', () async {
+      await workDb.create(ItemWithId(
+        id: 'keep1',
+        collection: 'testUpdate',
+        item: {'data': 'first'},
+      ));
+      await workDb.create(ItemWithId(
+        id: 'keep2',
+        collection: 'testUpdate',
+        item: {'data': 'second'},
+      ));
+      await workDb.create(ItemWithId(
+        id: 'keep3',
+        collection: 'testUpdate',
+        item: {'data': 'third'},
+      ));
+
+      // Update an existing item - count stays at 3, no eviction
+      await workDb.createOrUpdate(ItemWithId(
+        id: 'keep1',
+        collection: 'testUpdate',
+        item: {'data': 'updated'},
+      ));
+
+      final ids = await workDb.getItemsInCollection('testUpdate');
+      expect(ids.length, equals(3));
+      expect(ids, contains('keep1'));
+    });
+
+    test('should enforce max records with createMultiple', () async {
+      final items = List.generate(5, (i) => ItemWithId(
+        id: 'multi$i',
+        collection: 'testMulti',
+        item: {'seq': i},
+      ));
+      await workDb.createMultiple(items);
+
+      final ids = await workDb.getItemsInCollection('testMulti');
+      expect(ids.length, lessThanOrEqualTo(3));
+    });
+
+    test('should allow records within the limit', () async {
+      for (var i = 1; i <= 3; i++) {
+        await workDb.create(ItemWithId(
+          id: 'within$i',
+          collection: 'testWithin',
+          item: {'seq': i},
+        ));
+      }
+
+      final ids = await workDb.getItemsInCollection('testWithin');
+      expect(ids.length, equals(3));
+      expect(ids, contains('within1'));
+      expect(ids, contains('within2'));
+      expect(ids, contains('within3'));
+    });
+
+    test('should enforce max records using sync methods', () {
+      for (var i = 1; i <= 5; i++) {
+        workDb.createSync(ItemWithId(
+          id: 'sync$i',
+          collection: 'testSync',
+          item: {'seq': i},
+        ));
+      }
+
+      final ids = workDb.getItemsInCollectionSync('testSync');
+      expect(ids.length, lessThanOrEqualTo(3));
+    });
+  });
+}

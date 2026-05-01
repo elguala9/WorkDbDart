@@ -8,4 +8,10 @@ void main() {
   group('Memory WorkDB', () {
     testIWorkDb(() => factory.create(MemoryWorkDbFactoryInput()));
   });
+
+  group('Memory WorkDB with max records', () {
+    testIWorkDbWithMaxRecords(() => factory.create(
+          MemoryWorkDbFactoryInput(maxRecordsPerCollection: 3),
+        ) as ClientWorkDb);
+  });
 }

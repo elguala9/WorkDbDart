@@ -33,4 +33,18 @@ void main() {
       return factory.create(IoWorkDbFactoryInput(dataPath: testDir.path));
     });
   });
+
+  group('IO WorkDB with max records', () {
+    var maxRecordsTestCounter = 0;
+
+    testIWorkDbWithMaxRecords(() {
+      maxRecordsTestCounter++;
+      final testDir = Directory('${tempDir.path}/max_records_test_$maxRecordsTestCounter');
+      testDir.createSync(recursive: true);
+      return factory.create(IoWorkDbFactoryInput(
+        dataPath: testDir.path,
+        maxRecordsPerCollection: 3,
+      )) as ClientWorkDb;
+    });
+  });
 }

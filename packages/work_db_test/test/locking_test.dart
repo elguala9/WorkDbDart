@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:work_db/work_db.dart';
+import 'package:work_db_test/work_db_test.dart';
 
 void main() {
   group('ClientWorkDb Locking', () {
@@ -558,5 +559,12 @@ void main() {
         await lockManager1.release(lockPath);
       });
     });
+  });
+
+  group('ClientWorkDbLock with max records', () {
+    testIWorkDbWithMaxRecords(() => ClientWorkDbLock(
+          MemoryWorkDb(),
+          maxRecordsPerCollection: 3,
+        ));
   });
 }

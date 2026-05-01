@@ -22,10 +22,12 @@ class WorkDbConfig {
   /// [platform] is required and determines which implementation to use.
   /// [dataPath] is used for IO platform (defaults to './data').
   /// [webStorage] can be provided for custom web storage implementation.
+  /// [maxRecordsPerCollection] is an optional limit on records per collection.
   const WorkDbConfig({
     required this.platform,
     this.dataPath = './data',
     this.webStorage,
+    this.maxRecordsPerCollection,
   });
 
   /// The target platform type.
@@ -36,6 +38,11 @@ class WorkDbConfig {
 
   /// Optional custom web storage (used by [PlatformType.web]).
   final IWebStorage? webStorage;
+
+  /// Optional maximum number of records per collection.
+  ///
+  /// When the limit is exceeded, the oldest records are automatically evicted.
+  final int? maxRecordsPerCollection;
 }
 
 /// Base class for factory input types.
@@ -55,10 +62,17 @@ class IoWorkDbFactoryInput extends WorkDbFactoryInput {
   /// Creates input for IO-based storage.
   ///
   /// [dataPath] is the base directory for storing database files.
-  const IoWorkDbFactoryInput({required this.dataPath});
+  /// [maxRecordsPerCollection] is an optional limit on records per collection.
+  const IoWorkDbFactoryInput({
+    required this.dataPath,
+    this.maxRecordsPerCollection,
+  });
 
   /// The base path for file storage.
   final String dataPath;
+
+  /// Optional maximum number of records per collection.
+  final int? maxRecordsPerCollection;
 }
 
 /// Input configuration for creating a [WebWorkDb] instance.
@@ -72,10 +86,17 @@ class WebWorkDbFactoryInput extends WorkDbFactoryInput {
   ///
   /// [webStorage] is an optional custom storage implementation.
   /// If not provided, defaults to [MapWebStorage].
-  const WebWorkDbFactoryInput({this.webStorage});
+  /// [maxRecordsPerCollection] is an optional limit on records per collection.
+  const WebWorkDbFactoryInput({
+    this.webStorage,
+    this.maxRecordsPerCollection,
+  });
 
   /// Optional custom web storage implementation.
   final IWebStorage? webStorage;
+
+  /// Optional maximum number of records per collection.
+  final int? maxRecordsPerCollection;
 }
 
 /// Input configuration for creating a [MemoryWorkDb] instance.
@@ -86,7 +107,12 @@ class WebWorkDbFactoryInput extends WorkDbFactoryInput {
 /// ```
 class MemoryWorkDbFactoryInput extends WorkDbFactoryInput {
   /// Creates input for in-memory storage.
-  const MemoryWorkDbFactoryInput();
+  ///
+  /// [maxRecordsPerCollection] is an optional limit on records per collection.
+  const MemoryWorkDbFactoryInput({this.maxRecordsPerCollection});
+
+  /// Optional maximum number of records per collection.
+  final int? maxRecordsPerCollection;
 }
 
 /// Interface for WorkDB factory implementations.
@@ -124,13 +150,22 @@ class WorkDbFactory implements IWorkDbFactory {
   @override
   ClientWorkDb create(WorkDbFactoryInput input) {
     if (input is IoWorkDbFactoryInput) {
-      return ClientWorkDb(IoWorkDb(input.dataPath));
+      return ClientWorkDb(
+        IoWorkDb(input.dataPath),
+        maxRecordsPerCollection: input.maxRecordsPerCollection,
+      );
     }
     if (input is WebWorkDbFactoryInput) {
-      return ClientWorkDb(WebWorkDb(input.webStorage));
+      return ClientWorkDb(
+        WebWorkDb(input.webStorage),
+        maxRecordsPerCollection: input.maxRecordsPerCollection,
+      );
     }
     if (input is MemoryWorkDbFactoryInput) {
-      return ClientWorkDb(MemoryWorkDb());
+      return ClientWorkDb(
+        MemoryWorkDb(),
+        maxRecordsPerCollection: input.maxRecordsPerCollection,
+      );
     }
     throw ArgumentError('Unsupported input type: ${input.runtimeType}');
   }
@@ -152,10 +187,18 @@ ClientWorkDb createWorkDb(WorkDbConfig config) {
   final factory = WorkDbFactory();
   switch (config.platform) {
     case PlatformType.io:
-      return factory.create(IoWorkDbFactoryInput(dataPath: config.dataPath));
+      return factory.create(IoWorkDbFactoryInput(
+        dataPath: config.dataPath,
+        maxRecordsPerCollection: config.maxRecordsPerCollection,
+      ));
     case PlatformType.web:
-      return factory.create(WebWorkDbFactoryInput(webStorage: config.webStorage));
+      return factory.create(WebWorkDbFactoryInput(
+        webStorage: config.webStorage,
+        maxRecordsPerCollection: config.maxRecordsPerCollection,
+      ));
     case PlatformType.memory:
-      return factory.create(MemoryWorkDbFactoryInput());
+      return factory.create(MemoryWorkDbFactoryInput(
+        maxRecordsPerCollection: config.maxRecordsPerCollection,
+      ));
   }
 }

@@ -145,8 +145,26 @@ Future<void> main() async {
   final emptyCollections = await db.getCollections();
   print('   Collections after clear: $emptyCollections\n');
 
+  // ==================== Max Records Per Collection ====================
+  print('6. Max records per collection...');
+
+  // Create a database with a limit of 3 records per collection
+  final limitedDb = WorkDb.memory(maxRecordsPerCollection: 3);
+
+  // Add 5 items - only the 3 newest will be kept
+  for (var i = 1; i <= 5; i++) {
+    await limitedDb.create(ItemWithId(
+      id: 'log_$i',
+      collection: 'logs',
+      item: {'event': 'Event $i', 'timestamp': DateTime.now().toIso8601String()},
+    ));
+  }
+
+  final logIds = await limitedDb.getItemsInCollection('logs');
+  print('   Added 5 logs, kept ${logIds.length} (max 3): $logIds\n');
+
   // ==================== Platform-Specific Examples ====================
-  print('6. Platform-specific usage:');
+  print('7. Platform-specific usage:');
   print('''
    // Desktop/Server (file system storage)
    final factory = WorkDbFactory();

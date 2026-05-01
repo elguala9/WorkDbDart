@@ -49,16 +49,24 @@ class ClientWorkDb implements IWorkDb, IWorkDbSync {
   /// [workDbInternal] is the storage implementation to use.
   /// Must also implement [IWorkFileSystemSync] (all built-in backends do).
   ///
+  /// [maxRecordsPerCollection] is an optional limit on the number of records
+  /// per collection. When the limit is exceeded, the oldest records are
+  /// automatically evicted. Defaults to `null` (unlimited).
+  ///
   /// Example:
   /// ```dart
   /// final db = ClientWorkDb(IoWorkDb('./data'));
   /// ```
-  ClientWorkDb(IWorkFileSystem workDbInternal)
-      : _workDbInternal = workDbInternal,
+  ClientWorkDb(
+    IWorkFileSystem workDbInternal, {
+    int? maxRecordsPerCollection,
+  })  : _maxRecordsPerCollection = maxRecordsPerCollection,
+        _workDbInternal = workDbInternal,
         _workDbInternalSync = workDbInternal as IWorkFileSystemSync {
     NamingConvention.validateOrThrow(workDbInternal.getPath());
   }
 
+  final int? _maxRecordsPerCollection;
   final IWorkFileSystem _workDbInternal;
   final IWorkFileSystemSync _workDbInternalSync;
 
@@ -71,6 +79,68 @@ class ClientWorkDb implements IWorkDb, IWorkDbSync {
   /// Gets the path to a specific item.
   String _getItemPath(ItemId itemId) =>
       '${_getCollectionPath(itemId.collection)}/${itemId.id}';
+
+  /// Enforces the [maxRecordsPerCollection] limit by evicting the oldest
+  /// records from the given [collection].
+  Future<void> _enforceCollectionLimit(String collection) async {
+    if (_maxRecordsPerCollection == null) return;
+
+    final itemIds = await getItemsInCollection(collection);
+    if (itemIds.length <= _maxRecordsPerCollection!) return;
+
+    final itemsWithTime = <_ItemWithTime>[];
+    for (final id in itemIds) {
+      final item = await retrieve(ItemId(id: id, collection: collection));
+      if (item != null) {
+        itemsWithTime.add(_ItemWithTime(
+          id: id,
+          createdAt:
+              item.createdAt != null ? DateTime.tryParse(item.createdAt!) : null,
+        ));
+      }
+    }
+
+    itemsWithTime.sort(_compareByCreatedAt);
+
+    final toDelete = itemsWithTime.length - _maxRecordsPerCollection!;
+    for (var i = 0; i < toDelete; i++) {
+      await delete(ItemId(id: itemsWithTime[i].id, collection: collection));
+    }
+  }
+
+  /// Sync version of [_enforceCollectionLimit].
+  void _enforceCollectionLimitSync(String collection) {
+    if (_maxRecordsPerCollection == null) return;
+
+    final itemIds = getItemsInCollectionSync(collection);
+    if (itemIds.length <= _maxRecordsPerCollection!) return;
+
+    final itemsWithTime = <_ItemWithTime>[];
+    for (final id in itemIds) {
+      final item = retrieveSync(ItemId(id: id, collection: collection));
+      if (item != null) {
+        itemsWithTime.add(_ItemWithTime(
+          id: id,
+          createdAt:
+              item.createdAt != null ? DateTime.tryParse(item.createdAt!) : null,
+        ));
+      }
+    }
+
+    itemsWithTime.sort(_compareByCreatedAt);
+
+    final toDelete = itemsWithTime.length - _maxRecordsPerCollection!;
+    for (var i = 0; i < toDelete; i++) {
+      deleteSync(ItemId(id: itemsWithTime[i].id, collection: collection));
+    }
+  }
+
+  static int _compareByCreatedAt(_ItemWithTime a, _ItemWithTime b) {
+    if (a.createdAt == null && b.createdAt == null) return 0;
+    if (a.createdAt == null) return 1;
+    if (b.createdAt == null) return -1;
+    return a.createdAt!.compareTo(b.createdAt!);
+  }
 
   @override
   Future<void> create(ItemWithId input) async {
@@ -85,6 +155,7 @@ class ClientWorkDb implements IWorkDb, IWorkDbSync {
     }
 
     await _workDbInternal.writeFile(path, Item(item: input.item));
+    await _enforceCollectionLimit(input.collection);
   }
 
   @override
@@ -113,6 +184,7 @@ class ClientWorkDb implements IWorkDb, IWorkDbSync {
   Future<void> createOrUpdate(ItemWithId input) async {
     final path = _getItemPath(input.toItemId());
     await _workDbInternal.writeFile(path, Item(item: input.item));
+    await _enforceCollectionLimit(input.collection);
   }
 
   @override
@@ -210,6 +282,7 @@ class ClientWorkDb implements IWorkDb, IWorkDbSync {
       throw ItemAlreadyExistsException(id: input.id, collection: input.collection);
     }
     _workDbInternalSync.writeFileSync(path, Item(item: input.item));
+    _enforceCollectionLimitSync(input.collection);
   }
 
   @override
@@ -233,6 +306,7 @@ class ClientWorkDb implements IWorkDb, IWorkDbSync {
   void createOrUpdateSync(ItemWithId input) {
     final path = _getItemPath(input.toItemId());
     _workDbInternalSync.writeFileSync(path, Item(item: input.item));
+    _enforceCollectionLimitSync(input.collection);
   }
 
   @override
@@ -290,4 +364,12 @@ class ClientWorkDb implements IWorkDb, IWorkDbSync {
     }
     return collections.toList();
   }
+}
+
+/// Helper class to associate an item ID with its creation time for sorting.
+class _ItemWithTime {
+  _ItemWithTime({required this.id, this.createdAt});
+
+  final String id;
+  final DateTime? createdAt;
 }

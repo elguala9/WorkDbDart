@@ -10,4 +10,13 @@ void main() {
       () => factory.create(WebWorkDbFactoryInput(webStorage: MapWebStorage())),
     );
   });
+
+  group('Web WorkDB with max records', () {
+    testIWorkDbWithMaxRecords(() => factory.create(
+          WebWorkDbFactoryInput(
+            webStorage: MapWebStorage(),
+            maxRecordsPerCollection: 3,
+          ),
+        ) as ClientWorkDb);
+  });
 }

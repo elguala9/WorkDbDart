@@ -23,13 +23,14 @@ A lightweight, cross-platform local database for Dart and Flutter with optional 
 - **Synchronous API** *(New in 1.2.0)*: Full `*Sync` counterparts for all operations via `IWorkDbSync`
   - `createSync`, `updateSync`, `retrieveSync`, `deleteSync`, and all other operations available synchronously
   - `ClientWorkDbLockSync` for thread-safe synchronous operations
-- **Well tested**: 224 tests across all implementations + 22 comprehensive locking tests + full sync test coverage
+- **Record Limit per Collection** *(New in 1.3.0)*: Optional `maxRecordsPerCollection` with automatic eviction of oldest records
+- **Well tested**: 397 tests across all implementations + locking tests + full sync test coverage
 
 ## Installation
 
 ```yaml
 dependencies:
-  work_db: ^1.2.0
+  work_db: ^1.3.0
 ```
 
 ## Quick Start
@@ -178,6 +179,38 @@ void main() {
 ```
 
 `ClientWorkDbLockSync` also inherits all async operations from `ClientWorkDbLock`, so you can mix sync and async calls on the same instance.
+
+## Record Limit per Collection *(New in 1.3.0)*
+
+Set an optional maximum number of records per collection. When the limit is exceeded, the oldest records are automatically evicted:
+
+```dart
+// Keep max 10 log entries per collection
+final db = ClientWorkDb(
+  IoWorkDb('./data'),
+  maxRecordsPerCollection: 10,
+);
+```
+
+Works with all backends and factory methods:
+
+```dart
+// Via factory
+final db = factory.create(MemoryWorkDbFactoryInput(
+  maxRecordsPerCollection: 100,
+));
+
+// Via convenience class
+final db = WorkDb.memory(maxRecordsPerCollection: 3);
+
+// With locking
+final db = ClientWorkDbLock(
+  IoWorkDb('./data'),
+  maxRecordsPerCollection: 50,
+);
+```
+
+Eviction is triggered on `create`, `createMultiple`, `createOrUpdate`, and `createOrUpdateMultiple` (and their sync variants). Items are sorted by creation timestamp and the oldest are removed when the limit is exceeded.
 
 ## Platform-Specific Setup
 

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:work_db/work_db.dart';
+import 'package:work_db_test/work_db_test.dart';
 
 void main() {
   group('LockManagerSync', () {
@@ -613,5 +614,12 @@ void main() {
         expect(r?.item['v'], equals('db2'));
       });
     });
+  });
+
+  group('ClientWorkDbLockSync with max records', () {
+    testIWorkDbWithMaxRecords(() => ClientWorkDbLockSync(
+          MemoryWorkDb(),
+          maxRecordsPerCollection: 3,
+        ));
   });
 }

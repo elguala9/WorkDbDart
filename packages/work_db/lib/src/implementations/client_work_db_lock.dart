@@ -38,17 +38,24 @@ class ClientWorkDbLock extends ClientWorkDb {
   /// Lock files are stored in `./WorkDBLocks` directory parallel to data files.
   /// Locks use a 5000ms timeout by default.
   ///
+  /// [maxRecordsPerCollection] is forwarded to [ClientWorkDb].
+  ///
   /// Example:
   /// ```dart
   /// final db = ClientWorkDbLock(IoWorkDb('./data'));
   /// ```
-  ClientWorkDbLock(super.workDbInternal)
-      : _lockManager = LockManager(workDbInternal, 0);
+  ClientWorkDbLock(
+    IWorkFileSystem workDbInternal, {
+    int? maxRecordsPerCollection,
+  }) : _lockManager = LockManager(workDbInternal, 0),
+       super(workDbInternal, maxRecordsPerCollection: maxRecordsPerCollection);
 
   /// Creates a [ClientWorkDbLock] with custom lock timeout for stale lock detection.
   ///
   /// [waitingMs] enables stale lock detection and cleanup. When > 0, the lock
   /// manager will detect and clean up expired locks automatically.
+  ///
+  /// [maxRecordsPerCollection] is forwarded to [ClientWorkDb].
   ///
   /// Example:
   /// ```dart
@@ -58,9 +65,11 @@ class ClientWorkDbLock extends ClientWorkDb {
   /// );
   /// ```
   ClientWorkDbLock.withWaitingMs(
-    super.workDbInternal, {
+    IWorkFileSystem workDbInternal, {
     required int waitingMs,
-  }) : _lockManager = LockManager(workDbInternal, waitingMs);
+    int? maxRecordsPerCollection,
+  }) : _lockManager = LockManager(workDbInternal, waitingMs),
+       super(workDbInternal, maxRecordsPerCollection: maxRecordsPerCollection);
 
   final LockManager _lockManager;
 
@@ -85,6 +94,8 @@ class ClientWorkDbLock extends ClientWorkDb {
     } finally {
       await _lockManager.release(path);
     }
+
+    await _enforceCollectionLimit(input.collection);
   }
 
   @override
@@ -123,6 +134,8 @@ class ClientWorkDbLock extends ClientWorkDb {
     } finally {
       await _lockManager.release(path);
     }
+
+    await _enforceCollectionLimit(input.collection);
   }
 
   @override
